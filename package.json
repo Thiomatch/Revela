@@ -1,6 +1,26 @@
-"scripts": {
-  "dev": "vite",
-  "build": "electron-vite build",
-  "pack": "electron-builder --dir",
-  "dist": "electron-builder"
+{
+  "name": "sgate",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "main": "dist-electron/main.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build && electron-builder",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder"
+  },
+  "dependencies": {
+    "lucide-react": "^1.16.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "electron": "^30.5.1",
+    "electron-builder": "^24.13.3",
+    "vite": "^5.3.4"
+  }
 }
