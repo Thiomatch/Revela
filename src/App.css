@@ -1,0 +1,1035 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  width: 100%;
+  min-height: 100%;
+  background: #000;
+}
+
+body {
+  font-family:
+    Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    Helvetica,
+    Arial,
+    sans-serif;
+
+  color: #fff;
+  background: #000;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  border: none;
+}
+
+/* =========================
+   APP
+========================= */
+
+.app-shell {
+  min-height: 100vh;
+  width: 100%;
+  background: #000;
+}
+
+.app-container {
+  position: relative;
+
+  width: 100%;
+  max-width: 430px;
+  min-height: 100vh;
+
+  margin: 0 auto;
+
+  background: #000;
+
+  overflow-x: hidden;
+}
+
+/* =========================
+   HOME HEADER
+========================= */
+
+.top-header {
+  display: flex;
+  align-items: center;
+
+  gap: 12px;
+
+  padding: 30px 30px 18px;
+
+  background: #000;
+}
+
+.search-area {
+  flex: 1;
+
+  height: 60px;
+
+  display: flex;
+  align-items: center;
+
+  padding: 0 16px;
+
+  border-radius: 4px;
+
+  background: #292929;
+}
+
+.search-icon {
+  width: 29px;
+  height: 29px;
+
+  margin-right: 13px;
+
+  fill: none;
+
+  stroke: #858585;
+
+  stroke-width: 2;
+}
+
+.search-area input {
+  width: 100%;
+
+  border: none;
+  outline: none;
+
+  background: transparent;
+
+  color: #fff;
+
+  font-size: 20px;
+}
+
+.search-area input::placeholder {
+  color: #818181;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+
+  gap: 7px;
+}
+
+.header-button {
+  position: relative;
+
+  width: 43px;
+  height: 60px;
+
+  padding: 0;
+
+  background: transparent;
+
+  cursor: pointer;
+}
+
+.crown-wrapper,
+.gift-wrapper {
+  position: relative;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 100%;
+  height: 100%;
+}
+
+.crown {
+  font-size: 40px;
+
+  color: #ffd33d;
+}
+
+.gift {
+  font-size: 39px;
+}
+
+.discount-badge,
+.gift-badge {
+  position: absolute;
+
+  top: 2px;
+  right: -2px;
+
+  z-index: 2;
+
+  padding: 2px 5px;
+
+  border-radius: 3px;
+
+  background: #f3215b;
+
+  color: #fff;
+
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.gift-badge {
+  right: -4px;
+}
+
+/* =========================
+   CATEGORY TABS
+========================= */
+
+.category-tabs {
+  display: flex;
+  align-items: center;
+
+  gap: 35px;
+
+  height: 70px;
+
+  padding: 0 30px;
+
+  overflow-x: auto;
+
+  scrollbar-width: none;
+}
+
+.category-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.category-tab {
+  position: relative;
+
+  flex-shrink: 0;
+
+  padding: 0 0 14px;
+
+  background: transparent;
+
+  color: #8f8f8f;
+
+  font-size: 20px;
+  font-weight: 500;
+
+  cursor: pointer;
+}
+
+.category-tab.selected {
+  color: #fff;
+
+  font-weight: 700;
+}
+
+.category-tab.selected::after {
+  content: "";
+
+  position: absolute;
+
+  left: 50%;
+  bottom: 0;
+
+  width: 45px;
+  height: 4px;
+
+  transform: translateX(-50%);
+
+  border-radius: 10px;
+
+  background: #fff;
+}
+
+/* =========================
+   CONTENT
+========================= */
+
+.content {
+  padding: 0 30px 110px;
+}
+
+.drama-grid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(3, minmax(0, 1fr));
+
+  column-gap: 14px;
+
+  row-gap: 34px;
+}
+
+/* =========================
+   DRAMA CARD
+========================= */
+
+.drama-card {
+  min-width: 0;
+
+  cursor: pointer;
+}
+
+.poster-container {
+  position: relative;
+
+  width: 100%;
+
+  aspect-ratio: 0.67;
+
+  overflow: hidden;
+
+  background: #1b1b1b;
+}
+
+.poster {
+  display: block;
+
+  width: 100%;
+  height: 100%;
+
+  object-fit: cover;
+
+  transition: transform 0.25s ease;
+}
+
+.drama-card:hover .poster {
+  transform: scale(1.03);
+}
+
+.poster-badge {
+  position: absolute;
+
+  top: 0;
+  right: 0;
+
+  padding: 5px 8px;
+
+  color: #fff;
+
+  font-size: 14px;
+  font-weight: 600;
+
+  line-height: 1;
+
+  border-bottom-left-radius: 4px;
+}
+
+.poster-badge.hot {
+  background: #ff1761;
+}
+
+.poster-badge.new {
+  background: rgba(70, 70, 70, 0.92);
+}
+
+.view-count {
+  position: absolute;
+
+  right: 5px;
+  bottom: 5px;
+
+  display: flex;
+  align-items: center;
+
+  gap: 3px;
+
+  color: #fff;
+
+  font-size: 13px;
+  font-weight: 600;
+
+  text-shadow: 0 1px 3px #000;
+}
+
+.play-icon {
+  width: 15px;
+  height: 15px;
+
+  fill: #fff;
+}
+
+.drama-title {
+  display: -webkit-box;
+
+  margin: 13px 0 0;
+
+  color: #fff;
+
+  font-size: 17px;
+  font-weight: 500;
+
+  line-height: 1.28;
+
+  overflow: hidden;
+
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.drama-category {
+  margin: 9px 0 0;
+
+  color: #858585;
+
+  font-size: 16px;
+
+  line-height: 1.2;
+}
+
+/* =========================
+   EMPTY STATE
+========================= */
+
+.empty-state {
+  padding: 70px 20px;
+
+  text-align: center;
+
+  color: #888;
+}
+
+.empty-icon {
+  font-size: 45px;
+}
+
+.empty-state h3 {
+  margin: 15px 0 5px;
+
+  color: #fff;
+}
+
+.empty-state p {
+  margin: 0;
+}
+
+/* =========================
+   DISCOUNT
+========================= */
+
+.discount-floating {
+  position: fixed;
+
+  right: calc(50% - 205px);
+  bottom: 105px;
+
+  z-index: 20;
+
+  display: flex;
+  align-items: center;
+
+  gap: 5px;
+
+  padding: 8px 10px;
+
+  border-radius: 13px;
+
+  background: linear-gradient(
+    180deg,
+    #ffd43b,
+    #f05a28
+  );
+
+  color: #fff;
+
+  font-size: 14px;
+  font-weight: 700;
+
+  box-shadow:
+    0 4px 14px rgba(0, 0, 0, 0.6);
+
+  cursor: pointer;
+}
+
+.discount-emoji {
+  font-size: 27px;
+}
+
+.floating-close {
+  position: fixed;
+
+  right: calc(50% - 205px);
+  bottom: 162px;
+
+  z-index: 21;
+
+  width: 30px;
+  height: 30px;
+
+  border-radius: 50%;
+
+  background: #5b5b5b;
+
+  color: #ddd;
+
+  font-size: 25px;
+
+  cursor: pointer;
+}
+
+/* =========================
+   PROFILE PAGE
+========================= */
+
+.profile-page {
+  min-height: 100vh;
+
+  padding: 28px 30px 110px;
+
+  background: #000;
+}
+
+.profile-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  margin-bottom: 28px;
+}
+
+.profile-header h1 {
+  margin: 0;
+
+  color: #fff;
+
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.settings-button {
+  width: 42px;
+  height: 42px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 50%;
+
+  background: #1d1d1d;
+
+  color: #fff;
+
+  font-size: 22px;
+
+  cursor: pointer;
+}
+
+/* PROFILE CARD */
+
+.profile-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  padding: 28px 20px 25px;
+
+  border-radius: 12px;
+
+  background: #171717;
+}
+
+.profile-avatar {
+  width: 86px;
+  height: 86px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  margin-bottom: 15px;
+
+  border-radius: 50%;
+
+  background: #2d2d2d;
+
+  border: 2px solid #444;
+}
+
+.profile-avatar .nav-icon {
+  width: 45px;
+  height: 45px;
+
+  stroke: #aaa;
+}
+
+.profile-info {
+  text-align: center;
+}
+
+.profile-info h2 {
+  margin: 0 0 8px;
+
+  color: #fff;
+
+  font-size: 20px;
+}
+
+.profile-info p {
+  margin: 0;
+
+  color: #888;
+
+  font-size: 14px;
+}
+
+.login-button {
+  width: 150px;
+  height: 44px;
+
+  margin-top: 20px;
+
+  border-radius: 22px;
+
+  background: #fff;
+
+  color: #000;
+
+  font-size: 16px;
+  font-weight: 700;
+
+  cursor: pointer;
+}
+
+.login-button:active {
+  transform: scale(0.97);
+}
+
+/* WALLET */
+
+.wallet-card {
+  display: flex;
+  align-items: center;
+
+  margin-top: 15px;
+
+  padding: 18px 20px;
+
+  border-radius: 12px;
+
+  background: #171717;
+}
+
+.wallet-item {
+  flex: 1;
+
+  display: flex;
+  align-items: center;
+
+  gap: 12px;
+}
+
+.wallet-icon {
+  width: 42px;
+  height: 42px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 50%;
+
+  background: #252525;
+
+  font-size: 23px;
+}
+
+.wallet-item strong {
+  display: block;
+
+  color: #fff;
+
+  font-size: 18px;
+}
+
+.wallet-item span {
+  display: block;
+
+  margin-top: 2px;
+
+  color: #888;
+
+  font-size: 13px;
+}
+
+.wallet-divider {
+  width: 1px;
+  height: 38px;
+
+  background: #333;
+}
+
+/* PROFILE MENU */
+
+.profile-menu {
+  margin-top: 15px;
+
+  overflow: hidden;
+
+  border-radius: 12px;
+
+  background: #171717;
+}
+
+.profile-menu-item {
+  width: 100%;
+  min-height: 62px;
+
+  display: flex;
+  align-items: center;
+
+  padding: 0 17px;
+
+  background: transparent;
+
+  color: #fff;
+
+  border-bottom: 1px solid #292929;
+
+  text-align: left;
+
+  cursor: pointer;
+}
+
+.profile-menu-item:last-child {
+  border-bottom: none;
+}
+
+.profile-menu-item:active {
+  background: #222;
+}
+
+.menu-icon {
+  width: 34px;
+
+  color: #ddd;
+
+  font-size: 20px;
+
+  text-align: center;
+}
+
+.menu-text {
+  flex: 1;
+
+  margin-left: 10px;
+
+  color: #eee;
+
+  font-size: 16px;
+}
+
+.chevron-icon {
+  width: 20px;
+  height: 20px;
+
+  fill: none;
+
+  stroke: #777;
+
+  stroke-width: 2;
+
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.menu-badge {
+  min-width: 23px;
+  height: 23px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  margin-right: 8px;
+
+  border-radius: 50%;
+
+  background: #333;
+
+  color: #aaa;
+
+  font-size: 12px;
+}
+
+.profile-version {
+  margin-top: 25px;
+
+  text-align: center;
+
+  color: #555;
+
+  font-size: 12px;
+}
+
+/* =========================
+   OTHER NAVIGATION PAGES
+========================= */
+
+.coming-page {
+  min-height: calc(100vh - 88px);
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  padding: 30px;
+
+  text-align: center;
+
+  background: #000;
+}
+
+.coming-icon {
+  margin-bottom: 15px;
+
+  font-size: 55px;
+}
+
+.coming-page h2 {
+  margin: 0 0 10px;
+
+  color: #fff;
+
+  font-size: 25px;
+}
+
+.coming-page p {
+  max-width: 280px;
+
+  margin: 0;
+
+  color: #777;
+
+  line-height: 1.5;
+}
+
+/* =========================
+   BOTTOM NAVIGATION
+========================= */
+
+.bottom-navigation {
+  position: fixed;
+
+  left: 50%;
+  bottom: 0;
+
+  z-index: 30;
+
+  width: 100%;
+  max-width: 430px;
+
+  height: 88px;
+
+  transform: translateX(-50%);
+
+  display: grid;
+
+  grid-template-columns:
+    repeat(5, 1fr);
+
+  align-items: center;
+
+  padding: 8px 8px 9px;
+
+  background: #050505;
+
+  border-top: 1px solid #171717;
+
+  box-shadow:
+    0 -8px 20px rgba(0, 0, 0, 0.35);
+}
+
+.bottom-item {
+  position: relative;
+
+  height: 72px;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  gap: 5px;
+
+  background: transparent;
+
+  color: #fff;
+
+  font-size: 13px;
+
+  cursor: pointer;
+}
+
+.nav-icon {
+  width: 30px;
+  height: 30px;
+
+  fill: none;
+
+  stroke: #fff;
+
+  stroke-width: 1.7;
+
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.bottom-item.active .nav-icon {
+  stroke-width: 2.2;
+}
+
+.bottom-item span {
+  color: #fff;
+}
+
+.profile-icon-wrapper {
+  position: relative;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.notification-dot {
+  position: absolute;
+
+  right: -2px;
+  top: -1px;
+
+  width: 10px;
+  height: 10px;
+
+  border-radius: 50%;
+
+  background: #f92765;
+
+  border: 1px solid #050505;
+}
+
+/* =========================
+   MOBILE
+========================= */
+
+@media (max-width: 430px) {
+
+  .top-header {
+    padding: 26px 30px 15px;
+  }
+
+  .category-tabs {
+    gap: 34px;
+  }
+
+  .content {
+    padding-left: 30px;
+    padding-right: 30px;
+  }
+
+  .drama-grid {
+    column-gap: 14px;
+  }
+
+  .drama-title {
+    font-size: 17px;
+  }
+
+  .drama-category {
+    font-size: 16px;
+  }
+
+  .discount-floating {
+    right: 12px;
+  }
+
+  .floating-close {
+    right: 12px;
+  }
+}
+
+/* =========================
+   SMALL PHONES
+========================= */
+
+@media (max-width: 370px) {
+
+  .top-header {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+
+  .category-tabs {
+    padding-left: 18px;
+    padding-right: 18px;
+
+    gap: 26px;
+  }
+
+  .content {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+
+  .search-area input {
+    font-size: 17px;
+  }
+
+  .drama-title {
+    font-size: 15px;
+  }
+
+  .drama-category {
+    font-size: 14px;
+  }
+
+  .drama-grid {
+    column-gap: 10px;
+  }
+
+  .profile-page {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+}
+
+/* =========================
+   DESKTOP
+========================= */
+
+@media (min-width: 700px) {
+
+  .app-shell {
+    display: flex;
+    justify-content: center;
+
+    min-height: 100vh;
+
+    background:
+      radial-gradient(
+        circle at center,
+        #202020 0,
+        #0b0b0b 35%,
+        #000 70%
+      );
+  }
+
+  .app-container {
+    min-height: 100vh;
+
+    box-shadow:
+      0 0 80px rgba(0, 0, 0, 0.8);
+
+    border-left: 1px solid #151515;
+    border-right: 1px solid #151515;
+  }
+}
