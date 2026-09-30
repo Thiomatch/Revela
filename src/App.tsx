@@ -1,3 +1,4 @@
+import { supabase } from './supabaseClient';
 import { useMemo, useState } from "react";
 import "./App.css";
 
