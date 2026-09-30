@@ -10,6 +10,11 @@ type Drama = {
   badge?: "Hot" | "New";
 };
 
+type UserProfile = {
+  name: string;
+  email: string;
+};
+
 const dramas: Drama[] = [
   {
     id: 1,
@@ -211,6 +216,14 @@ function App() {
   const [search, setSearch] = useState("");
   const [activeNav, setActiveNav] = useState("Home");
 
+  // Authentication & Modal States
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<"login" | "register">("login");
+  const [emailInput, setEmailInput] = useState("");
+  const [passwordInput, setPasswordInput] = useState("");
+  const [nameInput, setNameInput] = useState("");
+
   const filteredDramas = useMemo(() => {
     let result = dramas;
 
@@ -220,29 +233,23 @@ function App() {
 
     if (activeTab === "Rankings") {
       result = [...dramas].sort(
-        (a, b) =>
-          parseFloat(b.views) -
-          parseFloat(a.views)
+        (a, b) => parseFloat(b.views) - parseFloat(a.views)
       );
     }
 
     if (activeTab === "Categories") {
       result = dramas.filter(
         (drama) =>
-          drama.category === "Revenge" ||
-          drama.category === "Sweet Love"
+          drama.category === "Revenge" || drama.category === "Sweet Love"
       );
     }
 
     if (activeTab === "Anime") {
-      result = dramas.filter(
-        (drama) => drama.category === "Supernatural"
-      );
+      result = dramas.filter((drama) => drama.category === "Supernatural");
     }
 
     if (search.trim()) {
       const query = search.toLowerCase();
-
       result = result.filter(
         (drama) =>
           drama.title.toLowerCase().includes(query) ||
@@ -265,20 +272,65 @@ function App() {
     alert(`${name} section will be added next.`);
   };
 
+  const handleAuthSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!emailInput || !passwordInput || (authMode === "register" && !nameInput)) {
+      alert("Please fill in all required fields.");
+      return;
+    }
+
+    try {
+      if (authMode === "register") {
+        const { error } = await supabase.auth.signUp({
+          email: emailInput,
+          password: passwordInput,
+          options: {
+            data: { full_name: nameInput }
+          }
+        });
+        if (error) throw error;
+        alert("Registration successful! Check your email if verification is required, or sign in now.");
+        setAuthMode("login");
+      } else {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: emailInput,
+          password: passwordInput,
+        });
+        if (error) throw error;
+        
+        const user = data.user;
+        setCurrentUser({
+          name: user.user_metadata?.full_name || emailInput.split("@")[0],
+          email: user.email || emailInput,
+        });
+
+        // Reset form & close modal
+        setIsAuthModalOpen(false);
+        setEmailInput("");
+        setPasswordInput("");
+        setNameInput("");
+      }
+    } catch (error: any) {
+      alert(error.message || "Authentication failed");
+    }
+  };
+
+  const handleSignOut = () => {
+    setCurrentUser(null);
+  };
+
   return (
     <div className="app-shell">
       <div className="app-container">
-
+        
         {/* =========================
             HOME
         ========================= */}
-
         {activeNav === "Home" && (
           <>
             <header className="top-header">
               <div className="search-area">
                 <SearchIcon />
-
                 <input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
@@ -291,7 +343,6 @@ function App() {
                 <button className="header-button">
                   <CrownIcon />
                 </button>
-
                 <button className="header-button">
                   <GiftIcon />
                 </button>
@@ -315,42 +366,29 @@ function App() {
             <main className="content">
               <div className="drama-grid">
                 {filteredDramas.map((drama) => (
-                  <article
-                    className="drama-card"
-                    key={drama.id}
-                  >
+                  <article className="drama-card" key={drama.id}>
                     <div className="poster-container">
                       <img
                         src={drama.image}
                         alt={drama.title}
                         className="poster"
                       />
-
                       {drama.badge && (
                         <span
                           className={`poster-badge ${
-                            drama.badge === "Hot"
-                              ? "hot"
-                              : "new"
+                            drama.badge === "Hot" ? "hot" : "new"
                           }`}
                         >
                           {drama.badge}
                         </span>
                       )}
-
                       <div className="view-count">
                         <PlayIcon />
                         <span>{drama.views}</span>
                       </div>
                     </div>
-
-                    <h2 className="drama-title">
-                      {drama.title}
-                    </h2>
-
-                    <p className="drama-category">
-                      {drama.category}
-                    </p>
+                    <h2 className="drama-title">{drama.title}</h2>
+                    <p className="drama-category">{drama.category}</p>
                   </article>
                 ))}
               </div>
@@ -366,13 +404,9 @@ function App() {
 
             <button
               className="discount-floating"
-              onClick={() =>
-                showComingSoon("Discount")
-              }
+              onClick={() => showComingSoon("Discount")}
             >
-              <span className="discount-emoji">
-                🎁
-              </span>
+              <span className="discount-emoji">🎁</span>
               <span>Discount</span>
             </button>
 
@@ -391,208 +425,139 @@ function App() {
         {/* =========================
             PROFILE PAGE
         ========================= */}
-
         {activeNav === "Profile" && (
           <main className="profile-page">
-
             <header className="profile-header">
               <h1>Profile</h1>
-
               <button
                 className="settings-button"
-                onClick={() =>
-                  showComingSoon("Settings")
-                }
+                onClick={() => showComingSoon("Settings")}
               >
                 ⚙
               </button>
             </header>
 
             {/* PROFILE CARD */}
-
             <section className="profile-card">
-
               <div className="profile-avatar">
                 <ProfileIcon />
               </div>
 
               <div className="profile-info">
-                <h2>Welcome to REVELA</h2>
-                <p>Sign in to personalize your experience</p>
+                <h2>{currentUser ? currentUser.name : "Welcome to REVELA"}</h2>
+                <p>
+                  {currentUser
+                    ? currentUser.email
+                    : "Sign in to personalize your experience"}
+                </p>
               </div>
 
-              <button
-                className="login-button"
-                onClick={() =>
-                  showComingSoon("Login / Register")
-                }
-              >
-                Sign In
-              </button>
-
+              {currentUser ? (
+                <button className="login-button" onClick={handleSignOut}>
+                  Sign Out
+                </button>
+              ) : (
+                <button
+                  className="login-button"
+                  onClick={() => {
+                    setAuthMode("login");
+                    setIsAuthModalOpen(true);
+                  }}
+                >
+                  Sign In
+                </button>
+              )}
             </section>
 
             {/* COINS */}
-
             <section className="wallet-card">
-
               <div className="wallet-item">
-                <div className="wallet-icon coin">
-                  🪙
-                </div>
-
+                <div className="wallet-icon coin">🪙</div>
                 <div>
-                  <strong>0</strong>
+                  <strong>{currentUser ? "150" : "0"}</strong>
                   <span>Coins</span>
                 </div>
               </div>
-
               <div className="wallet-divider"></div>
-
               <div className="wallet-item">
-                <div className="wallet-icon gift">
-                  🎁
-                </div>
-
+                <div className="wallet-icon gift">🎁</div>
                 <div>
-                  <strong>0</strong>
+                  <strong>{currentUser ? "3" : "0"}</strong>
                   <span>Rewards</span>
                 </div>
               </div>
-
             </section>
 
             {/* MENU */}
-
             <section className="profile-menu">
-
               <button
                 className="profile-menu-item"
-                onClick={() =>
-                  showComingSoon("Watch History")
-                }
+                onClick={() => showComingSoon("Watch History")}
               >
-                <span className="menu-icon">
-                  🕘
-                </span>
-
-                <span className="menu-text">
-                  Watch History
-                </span>
-
+                <span className="menu-icon">🕘</span>
+                <span className="menu-text">Watch History</span>
                 <ChevronIcon />
               </button>
 
               <button
                 className="profile-menu-item"
-                onClick={() =>
-                  showComingSoon("My List")
-                }
+                onClick={() => showComingSoon("My List")}
               >
-                <span className="menu-icon">
-                  🔖
-                </span>
-
-                <span className="menu-text">
-                  My List
-                </span>
-
+                <span className="menu-icon">🔖</span>
+                <span className="menu-text">My List</span>
                 <ChevronIcon />
               </button>
 
               <button
                 className="profile-menu-item"
-                onClick={() =>
-                  showComingSoon("Downloads")
-                }
+                onClick={() => showComingSoon("Downloads")}
               >
-                <span className="menu-icon">
-                  ⬇
-                </span>
-
-                <span className="menu-text">
-                  Downloads
-                </span>
-
+                <span className="menu-icon">⬇</span>
+                <span className="menu-text">Downloads</span>
                 <ChevronIcon />
               </button>
 
               <button
                 className="profile-menu-item"
-                onClick={() =>
-                  showComingSoon("Notifications")
-                }
+                onClick={() => showComingSoon("Notifications")}
               >
-                <span className="menu-icon">
-                  🔔
-                </span>
-
-                <span className="menu-text">
-                  Notifications
-                </span>
-
-                <span className="menu-badge">
-                  0
-                </span>
-
+                <span className="menu-icon">🔔</span>
+                <span className="menu-text">Notifications</span>
+                <span className="menu-badge">0</span>
                 <ChevronIcon />
               </button>
 
               <button
                 className="profile-menu-item"
-                onClick={() =>
-                  showComingSoon("Help & Feedback")
-                }
+                onClick={() => showComingSoon("Help & Feedback")}
               >
-                <span className="menu-icon">
-                  ❓
-                </span>
-
-                <span className="menu-text">
-                  Help & Feedback
-                </span>
-
+                <span className="menu-icon">❓</span>
+                <span className="menu-text">Help & Feedback</span>
                 <ChevronIcon />
               </button>
 
               <button
                 className="profile-menu-item"
-                onClick={() =>
-                  showComingSoon("About Thio")
-                }
+                onClick={() => showComingSoon("About Thio")}
               >
-                <span className="menu-icon">
-                  ℹ
-                </span>
-
-                <span className="menu-text">
-                  About Thio
-                </span>
-
+                <span className="menu-icon">ℹ</span>
+                <span className="menu-text">About Thio</span>
                 <ChevronIcon />
               </button>
-
             </section>
 
-            <div className="profile-version">
-              REVELA v1.0.0
-            </div>
-
+            <div className="profile-version">REVELA v1.0.0</div>
           </main>
         )}
 
         {/* =========================
             OTHER TABS
         ========================= */}
-
         {activeNav === "For You" && (
           <div className="coming-page">
             <div className="coming-icon">▶</div>
             <h2>For You</h2>
-            <p>
-              Personalized recommendations will
-              appear here.
-            </p>
+            <p>Personalized recommendations will appear here.</p>
           </div>
         )}
 
@@ -600,10 +565,7 @@ function App() {
           <div className="coming-page">
             <div className="coming-icon">♕</div>
             <h2>Member</h2>
-            <p>
-              Membership and premium features will
-              appear here.
-            </p>
+            <p>Membership and premium features will appear here.</p>
           </div>
         )}
 
@@ -611,24 +573,16 @@ function App() {
           <div className="coming-page">
             <div className="coming-icon">🔖</div>
             <h2>My List</h2>
-            <p>
-              Your saved dramas will appear here.
-            </p>
+            <p>Your saved dramas will appear here.</p>
           </div>
         )}
 
         {/* =========================
             BOTTOM NAVIGATION
         ========================= */}
-
         <nav className="bottom-navigation">
-
           <button
-            className={`bottom-item ${
-              activeNav === "Home"
-                ? "active"
-                : ""
-            }`}
+            className={`bottom-item ${activeNav === "Home" ? "active" : ""}`}
             onClick={goToHome}
           >
             <HomeIcon />
@@ -636,65 +590,111 @@ function App() {
           </button>
 
           <button
-            className={`bottom-item ${
-              activeNav === "For You"
-                ? "active"
-                : ""
-            }`}
-            onClick={() =>
-              setActiveNav("For You")
-            }
+            className={`bottom-item ${activeNav === "For You" ? "active" : ""}`}
+            onClick={() => setActiveNav("For You")}
           >
             <VideoIcon />
             <span>For You</span>
           </button>
 
           <button
-            className={`bottom-item ${
-              activeNav === "Member"
-                ? "active"
-                : ""
-            }`}
-            onClick={() =>
-              setActiveNav("Member")
-            }
+            className={`bottom-item ${activeNav === "Member" ? "active" : ""}`}
+            onClick={() => setActiveNav("Member")}
           >
             <MemberIcon />
             <span>Member</span>
           </button>
 
           <button
-            className={`bottom-item ${
-              activeNav === "My List"
-                ? "active"
-                : ""
-            }`}
-            onClick={() =>
-              setActiveNav("My List")
-            }
+            className={`bottom-item ${activeNav === "My List" ? "active" : ""}`}
+            onClick={() => setActiveNav("My List")}
           >
             <BookmarkIcon />
             <span>My List</span>
           </button>
 
           <button
-            className={`bottom-item ${
-              activeNav === "Profile"
-                ? "active"
-                : ""
-            }`}
+            className={`bottom-item ${activeNav === "Profile" ? "active" : ""}`}
             onClick={goToProfile}
           >
             <div className="profile-icon-wrapper">
               <ProfileIcon />
-
               <span className="notification-dot"></span>
             </div>
-
             <span>Profile</span>
           </button>
-
         </nav>
+
+        {/* =========================
+            LOGIN / REGISTER MODAL
+        ========================= */}
+        {isAuthModalOpen && (
+          <div className="auth-modal-overlay">
+            <div className="auth-modal-card">
+              <div className="auth-modal-header">
+                <h2>{authMode === "login" ? "Sign In" : "Create Account"}</h2>
+                <button
+                  className="auth-close-btn"
+                  onClick={() => setIsAuthModalOpen(false)}
+                >
+                  ×
+                </button>
+              </div>
+
+              <form onSubmit={handleAuthSubmit} className="auth-form">
+                {authMode === "register" && (
+                  <div className="form-group">
+                    <label>Name</label>
+                    <input
+                      type="text"
+                      placeholder="Enter your name"
+                      value={nameInput}
+                      onChange={(e) => setNameInput(e.target.value)}
+                    />
+                  </div>
+                )}
+
+                <div className="form-group">
+                  <label>Email</label>
+                  <input
+                    type="email"
+                    placeholder="name@example.com"
+                    value={emailInput}
+                    onChange={(e) => setEmailInput(e.target.value)}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Password</label>
+                  <input
+                    type="password"
+                    placeholder="At least 6 characters"
+                    value={passwordInput}
+                    onChange={(e) => setPasswordInput(e.target.value)}
+                  />
+                </div>
+
+                <button type="submit" className="auth-submit-btn">
+                  {authMode === "login" ? "Sign In" : "Register"}
+                </button>
+              </form>
+
+              <div className="auth-switch-mode">
+                {authMode === "login" ? (
+                  <p>
+                    Don't have an account?{" "}
+                    <span onClick={() => setAuthMode("register")}>Register</span>
+                  </p>
+                ) : (
+                  <p>
+                    Already have an account?{" "}
+                    <span onClick={() => setAuthMode("login")}>Sign In</span>
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
       </div>
     </div>
