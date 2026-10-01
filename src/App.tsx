@@ -7,8 +7,8 @@ type Drama = {
   title: string;
   category: string;
   views: string;
-  image: string;
-  badge?: "Hot" | "New";
+  image?: string;
+  videoUrl?: string;
 };
 
 type UserProfile = {
@@ -22,9 +22,8 @@ const dramas: Drama[] = [
     title: "SEWES Students",
     category: "Project",
     views: "4.1M",
-    image:
-      "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/t-nail.png",
-    videoUrl: "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/1001(2).mp4"
+    image: "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/t-nail.png",
+    videoUrl: "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/1001(2).mp4",
   },
   {
     id: 2,
