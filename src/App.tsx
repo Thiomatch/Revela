@@ -19,11 +19,11 @@ type UserProfile = {
 const dramas: Drama[] = [
   {
     id: 1,
-    title: "Forbidden Pulse in the Rain",
-    category: "Revenge",
+    title: "SEWES Students",
+    category: "Project",
     views: "4.1M",
     image:
-      "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=600&q=85",
+      "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/1001(2).mp4",
   },
   {
     id: 2,
@@ -224,6 +224,7 @@ function App() {
   const [emailInput, setEmailInput] = useState("");
   const [passwordInput, setPasswordInput] = useState("");
   const [nameInput, setNameInput] = useState("");
+  const [selectedDrama, setSelectedDrama] = useState<any | null>(null);
 
   const filteredDramas = useMemo(() => {
     let result = dramas;
@@ -319,7 +320,30 @@ function App() {
   const handleSignOut = () => {
     setCurrentUser(null);
   };
-
+if (selectedDrama) {
+    return (
+      <div className="video-player-screen" style={{ padding: '20px', background: '#000', minHeight: '100vh', color: '#fff' }}>
+        <button 
+          onClick={() => setSelectedDrama(null)}
+          style={{ marginBottom: '15px', padding: '8px 16px', background: '#e50914', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+        >
+          ← Back to Home
+        </button>
+        <h2>{selectedDrama.title}</h2>
+        <p>{selectedDrama.category}</p>
+        
+        <div style={{ marginTop: '20px', maxWidth: '800px', margin: '0 auto' }}>
+          <video 
+            src={selectedDrama.videoUrl} 
+            controls 
+            autoPlay 
+            width="100%" 
+            style={{ borderRadius: '8px' }}
+          />
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="app-shell">
       <div className="app-container">
@@ -367,7 +391,12 @@ function App() {
             <main className="content">
               <div className="drama-grid">
                 {filteredDramas.map((drama) => (
-                  <article className="drama-card" key={drama.id}>
+                  <article 
+  className="drama-card" 
+  key={drama.id}
+  onClick={() => setSelectedDrama(drama)}
+  style={{ cursor: 'pointer' }}
+>
                     <div className="poster-container">
                       <img
                         src={drama.image}
