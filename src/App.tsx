@@ -335,7 +335,7 @@ if (selectedDrama) {
         <div style={{ marginTop: '20px', maxWidth: '800px', margin: '0 auto' }}>
           <video 
             src={selectedDrama.videoUrl} 
-            poster={selectedDrama.image}
+            poster="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=800"
             controls 
             width="100%" 
             style={{ borderRadius: '8px' }}
