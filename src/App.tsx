@@ -335,6 +335,7 @@ if (selectedDrama) {
         <div style={{ marginTop: '20px', maxWidth: '800px', margin: '0 auto' }}>
           <video 
             src={selectedDrama.videoUrl} 
+            poster={selectedDrama.image}
             controls 
             autoPlay 
             width="100%" 
