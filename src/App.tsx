@@ -337,7 +337,6 @@ if (selectedDrama) {
             src={selectedDrama.videoUrl} 
             poster={selectedDrama.image}
             controls 
-            autoPlay 
             width="100%" 
             style={{ borderRadius: '8px' }}
           />
