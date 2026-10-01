@@ -9,6 +9,7 @@ type Drama = {
   views: string;
   image?: string;
   videoUrl?: string;
+  badge?: string;
 };
 
 type UserProfile = {
