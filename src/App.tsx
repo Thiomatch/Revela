@@ -338,6 +338,9 @@ if (selectedDrama) {
             src={selectedDrama.videoUrl} 
             poster="https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/CEO.png"
             controls 
+            autoPlay 
+            playsInline 
+            muted   
             width="100%" 
             style={{ borderRadius: '8px' }}
           />
