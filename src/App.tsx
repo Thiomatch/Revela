@@ -32,7 +32,7 @@ const dramas: Drama[] = [
     category: "Revenge",
     views: "6.9M",
     image:
-      "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=600&q=85",
+      "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/CEO.png",
   },
   {
     id: 3,
@@ -40,7 +40,7 @@ const dramas: Drama[] = [
     category: "Sweet Love",
     views: "47.9M",
     image:
-      "https://images.unsplash.com/photo-1529139574466-a303027c1d8b?auto=format&fit=crop&w=600&q=85",
+      "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/CEO.png",
   },
   {
     id: 4,
@@ -48,7 +48,7 @@ const dramas: Drama[] = [
     category: "Supernatural",
     views: "121M",
     image:
-      "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=85",
+      "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/CEO.png",
     badge: "Hot",
   },
   {
@@ -57,7 +57,7 @@ const dramas: Drama[] = [
     category: "Revenge",
     views: "2.9M",
     image:
-      "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=600&q=85",
+      "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/CEO.png",
     badge: "New",
   },
   {
@@ -66,7 +66,7 @@ const dramas: Drama[] = [
     category: "Revenge",
     views: "471K",
     image:
-      "https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?auto=format&fit=crop&w=600&q=85",
+      "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/CEO.png",
     badge: "New",
   },
   {
@@ -75,7 +75,7 @@ const dramas: Drama[] = [
     category: "Sweet Love",
     views: "838K",
     image:
-      "https://images.unsplash.com/photo-1524250502761-1ac6f2e30d43?auto=format&fit=crop&w=600&q=85",
+      "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/CEO.png",
     badge: "New",
   },
   {
@@ -84,7 +84,7 @@ const dramas: Drama[] = [
     category: "Sweet Love",
     views: "1.2M",
     image:
-      "https://images.unsplash.com/photo-1500917293891-ef795e70e1f6?auto=format&fit=crop&w=600&q=85",
+      "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/CEO.png",
     badge: "New",
   },
   {
@@ -93,7 +93,7 @@ const dramas: Drama[] = [
     category: "Fantasy",
     views: "6.4M",
     image:
-      "https://images.unsplash.com/photo-1530103862676-de8c9debad1d?auto=format&fit=crop&w=600&q=85",
+      "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/CEO.png",
   },
   {
     id: 10,
@@ -101,7 +101,7 @@ const dramas: Drama[] = [
     category: "Billionaire",
     views: "3.7M",
     image:
-      "https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=600&q=85",
+      "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/CEO.png",
     badge: "New",
   },
   {
@@ -110,7 +110,7 @@ const dramas: Drama[] = [
     category: "Romance",
     views: "8.2M",
     image:
-      "https://images.unsplash.com/photo-1512316609839-ce289d3eba0a?auto=format&fit=crop&w=600&q=85",
+      "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/CEO.png",
   },
   {
     id: 12,
@@ -118,7 +118,7 @@ const dramas: Drama[] = [
     category: "Romance",
     views: "5.6M",
     image:
-      "https://images.unsplash.com/photo-1496440737103-cd596325d314?auto=format&fit=crop&w=600&q=85",
+      "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/CEO.png",
     badge: "Hot",
   },
 ];
@@ -336,7 +336,7 @@ if (selectedDrama) {
         <div style={{ marginTop: '20px', maxWidth: '800px', margin: '0 auto' }}>
           <video 
             src={selectedDrama.videoUrl} 
-            poster="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=800"
+            poster="https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/CEO.png"
             controls 
             width="100%" 
             style={{ borderRadius: '8px' }}
