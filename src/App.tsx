@@ -31,7 +31,7 @@ const dramas: Drama[] = [
     title: "Shadow",
     category: "Deep Concern",
     views: "6.9M",
-    image: "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/t-nail.png",
+    image: "https://supabase.com/dashboard/project/ffsvbbmzwhwzzxpvcfrq/storage/files/buckets/Shadow?preview=af6e0bc0-b25b-4956-8ebd-f7d8033260fd.png",
     videoUrl: "https://supabase.com/dashboard/project/ffsvbbmzwhwzzxpvcfrq/storage/files/buckets/Shadow?preview=Episode+1.mp4",
   },
   {
