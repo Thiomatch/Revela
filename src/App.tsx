@@ -28,7 +28,7 @@ const dramas: Drama[] = [
   },
   {
     id: 2,
-    title: "Shadows",
+    title: "Shadows E1",
     category: "Deep Waters",
     views: "6.9M",
     image: "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/image.shadowsE1.png",
