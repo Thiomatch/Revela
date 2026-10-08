@@ -28,11 +28,11 @@ const dramas: Drama[] = [
   },
   {
     id: 2,
-    title: "He Paid for One Night, Then Wanted Forever",
-    category: "Revenge",
+    title: "Shadow",
+    category: "Deep Concern",
     views: "6.9M",
     image:
-      "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/CEO.png",
+      "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/sign/Shadow/Episode%201.mp4?token=eyJraWQiOiJhMjM2MTEwYS01MTY1LTRkMDktODNmNi04ZmVjMDkyZTg2NWIiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJTaGFkb3cvRXBpc29kZSAxLm1wNCIsInNjb3BlIjoiZG93bmxvYWQiLCJpYXQiOjE3OTE0OTE0NzgsImV4cCI6MTc5MjA5NjI3OH0.YNLpjCwvRQOJhkQ0oOz73qQwTaBvsFuwm-LtHtdRB9E",
   },
   {
     id: 3,
