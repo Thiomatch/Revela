@@ -21,8 +21,7 @@ type UserProfile = {
 type VideoComment = {
   id: string;
   user_id: string;
-  display_name: string;
-  body: string;
+  content: string;
   created_at: string;
 };
 
@@ -159,6 +158,46 @@ function App() {
     ? `${selectedDrama.title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-episode-${selectedDrama.id === 1 ? selectedEpisode : 1}`
     : "";
 
+  // Restore the persisted Supabase session and keep the profile in sync.
+  useEffect(() => {
+    let mounted = true;
+
+    const syncUser = (user: { email?: string; user_metadata?: Record<string, unknown> } | null) => {
+      if (!mounted) return;
+      if (!user) {
+        setCurrentUser(null);
+        return;
+      }
+
+      const email = user.email ?? "";
+      const metadataName = user.user_metadata?.full_name;
+      setCurrentUser({
+        name:
+          typeof metadataName === "string" && metadataName.trim()
+            ? metadataName
+            : email.split("@")[0] || "Revela user",
+        email,
+      });
+    };
+
+    void supabase.auth.getSession().then(({ data, error }) => {
+      if (error) {
+        console.error("Could not restore authentication session:", error);
+        return;
+      }
+      syncUser(data.session?.user ?? null);
+    });
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      syncUser(session?.user ?? null);
+    });
+
+    return () => {
+      mounted = false;
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
+
   useEffect(() => {
     if (!selectedDrama) return;
 
@@ -170,19 +209,20 @@ function App() {
         const { count, error: countError } = await supabase
           .from("video_likes")
           .select("id", { count: "exact", head: true })
-          .eq("video_key", videoKey);
+          .eq("video_id", videoKey);
         if (countError) throw countError;
         if (!cancelled) setLikeCount(count ?? 0);
 
-        const { data: userData, error: userError } = await supabase.auth.getUser();
-        if (userError) throw userError;
+        // Signed-out visitors can still view likes and comments.
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) throw sessionError;
 
-        if (userData.user) {
+        if (sessionData.session?.user) {
           const { data: ownLike, error: ownLikeError } = await supabase
             .from("video_likes")
             .select("id")
-            .eq("video_key", videoKey)
-            .eq("user_id", userData.user.id)
+            .eq("video_id", videoKey)
+            .eq("user_id", sessionData.session.user.id)
             .maybeSingle();
           if (ownLikeError) throw ownLikeError;
           if (!cancelled) setHasLiked(Boolean(ownLike));
@@ -192,8 +232,8 @@ function App() {
 
         const { data: commentData, error: commentError } = await supabase
           .from("video_comments")
-          .select("id, user_id, display_name, body, created_at")
-          .eq("video_key", videoKey)
+          .select("id, user_id, content, created_at")
+          .eq("video_id", videoKey)
           .order("created_at", { ascending: false })
           .limit(100);
         if (commentError) throw commentError;
@@ -216,19 +256,29 @@ function App() {
     };
   }, [selectedDrama, selectedEpisode, videoKey]);
 
+  
   const requireSignedInUser = async () => {
-    const { data, error } = await supabase.auth.getUser();
-    if (error) throw error;
+    try {
+      const { data, error } = await supabase.auth.getSession();
+      if (error) throw error;
 
-    if (!data.user) {
-      alert("Please sign in to like videos or comment.");
+      const user = data.session?.user;
+      if (!user) {
+        setSelectedDrama(null);
+        setAuthMode("login");
+        setIsAuthModalOpen(true);
+        return null;
+      }
+
+      return user;
+    } catch (error) {
+      console.error("Authentication check failed:", error);
+      alert("We couldn't verify your sign-in session. Please sign in again.");
       setSelectedDrama(null);
       setAuthMode("login");
       setIsAuthModalOpen(true);
       return null;
     }
-
-    return data.user;
   };
 
   const handleToggleLike = async () => {
@@ -243,7 +293,7 @@ function App() {
         const { error } = await supabase
           .from("video_likes")
           .delete()
-          .eq("video_key", videoKey)
+          .eq("video_id", videoKey)
           .eq("user_id", user.id);
         if (error) throw error;
 
@@ -252,7 +302,7 @@ function App() {
       } else {
         const { error } = await supabase
           .from("video_likes")
-          .insert({ video_key: videoKey, user_id: user.id });
+          .insert({ video_id: videoKey, user_id: user.id });
 
         if (error) {
           if (error.code === "23505") {
@@ -284,18 +334,14 @@ function App() {
       const user = await requireSignedInUser();
       if (!user) return;
 
-      const displayName =
-        user.user_metadata?.full_name || user.email?.split("@")[0] || "Revela user";
-
       const { data, error } = await supabase
         .from("video_comments")
         .insert({
-          video_key: videoKey,
+          video_id: videoKey,
           user_id: user.id,
-          display_name: displayName,
-          body,
+          content: body,
         })
-        .select("id, user_id, display_name, body, created_at")
+        .select("id, user_id, content, created_at")
         .single();
 
       if (error) throw error;
@@ -687,10 +733,29 @@ function App() {
               </div>
             )}
           </div>
-        </div>
 
         {showComments && (
-          <section className="video-social-panel" aria-label="Video reactions and comments">
+          <section
+            className="video-social-panel video-comments-overlay"
+            aria-label="Video reactions and comments"
+            style={{
+              position: "absolute",
+              left: "10px",
+              right: "10px",
+              bottom: "10px",
+              zIndex: 40,
+              maxHeight: "62%",
+              overflowY: "auto",
+              boxSizing: "border-box",
+              padding: "12px",
+              color: "#fff",
+              background: "rgba(8, 8, 8, 0.62)",
+              border: "1px solid rgba(255, 255, 255, 0.2)",
+              borderRadius: "14px",
+              backdropFilter: "blur(8px)",
+              WebkitBackdropFilter: "blur(8px)",
+            }}
+          >
             <div className="video-comments" id="revela-comments">
               <h3>
                 Comments <span>({comments.length})</span>
@@ -722,16 +787,16 @@ function App() {
                   {comments.map((comment) => (
                     <article className="video-comment" key={comment.id}>
                       <div className="comment-avatar" aria-hidden="true">
-                        {comment.display_name.charAt(0).toUpperCase()}
+                        {"V"}
                       </div>
                       <div className="comment-content">
                         <div className="comment-meta">
-                          <strong>{comment.display_name}</strong>
+                          <strong>Viewer</strong>
                           <time dateTime={comment.created_at}>
                             {new Date(comment.created_at).toLocaleString()}
                           </time>
                         </div>
-                        <p>{comment.body}</p>
+                        <p>{comment.content}</p>
                       </div>
                     </article>
                   ))}
@@ -740,6 +805,9 @@ function App() {
             </div>
           </section>
         )}
+        </div>
+
+
       </div>
     );
   }
