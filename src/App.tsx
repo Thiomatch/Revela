@@ -26,21 +26,23 @@ const dramas: Drama[] = [
     image: "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/image.shadowsE1.png",
     videoUrl: "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/Episode%201.mp4",
   },
-   {
+  
+  {
     id: 2,
+    title: "Shadows E2",
+    category: "Deep Waters",
+    views: "47.9M",
+    image:
+      "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/CEO.png",
+      videoUrl: "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/Episode%202.mp4",
+  },
+  {
+    id: 3,
     title: "SEWES Students",
     category: "Project",
     views: "4.1M",
     image: "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/t-nail.png",
-    videoUrl: "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/1001(2).mp4",
-  },
-  {
-    id: 3,
-    title: "Tempted by My Best Friend's Billionaire Dad",
-    category: "Sweet Love",
-    views: "47.9M",
-    image:
-      "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/CEO.png",
+    videoUrl: "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/Episode%202.mp4",
   },
   {
     id: 4,
