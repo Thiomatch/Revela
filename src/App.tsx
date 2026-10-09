@@ -226,6 +226,7 @@ function App() {
   const [passwordInput, setPasswordInput] = useState("");
   const [nameInput, setNameInput] = useState("");
   const [selectedDrama, setSelectedDrama] = useState<any | null>(null);
+  const [showEpisodes, setShowEpisodes] = useState(false);
 
   const filteredDramas = useMemo(() => {
     let result = dramas;
@@ -333,18 +334,58 @@ if (selectedDrama) {
         <h2>{selectedDrama.title}</h2>
         <p>{selectedDrama.category}</p>
         
-        <div style={{ marginTop: '20px', maxWidth: '800px', margin: '0 auto' }}>
-          <video 
-            src={selectedDrama.videoUrl} 
-            poster="https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/CEO.png"
-            controls 
-            autoPlay 
-            playsInline 
-            muted   
-            width="100%" 
-            style={{ borderRadius: '8px' }}
-          />
-        </div>
+        
+<div className="video-frame">
+  <video
+    src={selectedDrama.videoUrl}
+    poster="https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/CEO.png"
+    controls
+    autoPlay
+    playsInline
+    muted
+    className="video-element"
+  />
+
+  <div className="episodes-menu-container">
+    <button
+      type="button"
+      className="episodes-menu-button"
+      onClick={() => setShowEpisodes((previous) => !previous)}
+      aria-label="Show episodes"
+      aria-expanded={showEpisodes}
+    >
+      <span className="episodes-hamburger">
+        <span></span>
+        <span></span>
+        <span></span>
+      </span>
+      <span className="episodes-label">Episodes</span>
+    </button>
+
+    {showEpisodes && (
+      <div className="episodes-dropdown">
+        <h3>Episodes</h3>
+
+        {dramas
+          .filter((drama) => drama.videoUrl)
+          .map((drama) => (
+            <button
+              type="button"
+              key={drama.id}
+              className="episode-item"
+              onClick={() => {
+                setSelectedDrama(drama);
+                setShowEpisodes(false);
+              }}
+            >
+              <span className="episode-play">▶</span>
+              <span>{drama.title}</span>
+            </button>
+          ))}
+      </div>
+    )}
+  </div>
+</div>
       </div>
     );
   }

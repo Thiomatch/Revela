@@ -736,3 +736,109 @@ body {
   font-weight: 600;
   text-decoration: underline;
 }
+
+/* Video frame and Episodes menu */
+.video-frame {
+  position: relative;
+  width: 100%;
+  max-width: 800px;
+  margin: 20px auto 0;
+  background: #000;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.video-element {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+}
+
+.episodes-menu-container {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 20;
+}
+
+.episodes-menu-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 9px 10px;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.episodes-menu-button:hover {
+  background: rgba(35, 35, 35, 0.95);
+}
+
+.episodes-hamburger {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 22px;
+}
+
+.episodes-hamburger span {
+  display: block;
+  width: 22px;
+  height: 2px;
+  background: #fff;
+  border-radius: 2px;
+}
+
+.episodes-label {
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.episodes-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 240px;
+  max-width: calc(100vw - 40px);
+  max-height: 300px;
+  overflow-y: auto;
+  padding: 12px;
+  color: #fff;
+  background: #171717;
+  border: 1px solid #383838;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
+}
+
+.episodes-dropdown h3 {
+  margin: 0 0 10px;
+  font-size: 15px;
+}
+
+.episode-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 8px;
+  color: #fff;
+  text-align: left;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.episode-item:hover {
+  background: #303030;
+}
+
+.episode-play {
+  flex-shrink: 0;
+  color: #e50914;
+}
