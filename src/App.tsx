@@ -348,6 +348,7 @@ function App() {
 
       setComments((existing) => [data as VideoComment, ...existing]);
       setCommentInput("");
+      setShowComments(false);
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Could not post your comment. Please try again.";
       alert(message);
