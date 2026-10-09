@@ -20,22 +20,13 @@ type UserProfile = {
 const dramas: Drama[] = [
    {
     id: 1,
-    title: "Shadows E1",
+    title: "Shadows",
     category: "Deep Waters",
     views: "6.9M",
     image: "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/image.shadowsE1.png",
     videoUrl: "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/Episode%201.mp4",
   },
   
-  {
-    id: 2,
-    title: "Shadows E2",
-    category: "Deep Waters",
-    views: "47.9M",
-    image:
-      "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/CEO.png",
-      videoUrl: "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/Episode%202.mp4",
-  },
   {
     id: 3,
     title: "SEWES Students",
@@ -230,6 +221,8 @@ function App() {
   const [selectedDrama, setSelectedDrama] = useState<any | null>(null);
   const [showEpisodes, setShowEpisodes] = useState(false);
   const [showNextEpisodePrompt, setShowNextEpisodePrompt] = useState(false);
+  const [selectedEpisode, setSelectedEpisode] = useState(1);
+  const [unlockedEpisode, setUnlockedEpisode] = useState(1);
 
   const filteredDramas = useMemo(() => {
     let result = dramas;
@@ -333,37 +326,45 @@ if (selectedDrama) {
             setSelectedDrama(null);
             setShowNextEpisodePrompt(false);
             setShowEpisodes(false);
+            setSelectedEpisode(1);
           }}
           style={{ marginBottom: '15px', padding: '8px 16px', background: '#e50914', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
         >
           ← Back to Home
         </button>
-        <h2>{selectedDrama.title}</h2>
+        <h2>{selectedDrama.id === 1 ? `Shadows — Episode ${selectedEpisode}` : selectedDrama.title}</h2>
         <p>{selectedDrama.category}</p>
         
         
 <div className="video-frame">
   <video
-    src={selectedDrama.videoUrl}
-    poster="https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/CEO.png"
+    key={`${selectedDrama.id}-${selectedEpisode}`}
+    src={selectedDrama.id === 1 && selectedEpisode === 2
+      ? "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/Episode%202.mp4"
+      : selectedDrama.videoUrl}
+    poster={selectedDrama.image || "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/CEO.png"}
     controls
     autoPlay
     playsInline
     muted
     className="video-element"
     onEnded={() => {
-      if (selectedDrama.id === 1) {
+      if (selectedDrama.id === 1 && selectedEpisode === 1) {
+        setUnlockedEpisode(2);
         setShowNextEpisodePrompt(true);
+      } else {
+        setShowNextEpisodePrompt(false);
       }
     }}
     onPlay={() => setShowNextEpisodePrompt(false)}
   />
 
-  {showNextEpisodePrompt && selectedDrama.id === 1 && (
+  {showNextEpisodePrompt && selectedDrama.id === 1 && selectedEpisode === 1 && (
     <button
       type="button"
       onClick={() => {
-        setShowEpisodes(true);
+        setSelectedEpisode(2);
+        setShowEpisodes(false);
         setShowNextEpisodePrompt(false);
       }}
       style={{
@@ -385,7 +386,7 @@ if (selectedDrama) {
         cursor: 'pointer'
       }}
     >
-      Click here for episode 2
+      Click here to view episode 2
     </button>
   )}
 
@@ -409,23 +410,55 @@ if (selectedDrama) {
       <div className="episodes-dropdown">
         <h3>Episodes</h3>
 
-        {dramas
-          .filter((drama) => drama.videoUrl)
-          .map((drama) => (
+        {selectedDrama.id === 1 ? (
+          <>
             <button
               type="button"
-              key={drama.id}
               className="episode-item"
               onClick={() => {
-                setSelectedDrama(drama);
+                setSelectedEpisode(1);
                 setShowEpisodes(false);
                 setShowNextEpisodePrompt(false);
               }}
             >
               <span className="episode-play">▶</span>
-              <span>{drama.title}</span>
+              <span>Shadows — Episode 1</span>
             </button>
-          ))}
+            {unlockedEpisode >= 2 && (
+              <button
+                type="button"
+                className="episode-item"
+                onClick={() => {
+                  setSelectedEpisode(2);
+                  setShowEpisodes(false);
+                  setShowNextEpisodePrompt(false);
+                }}
+              >
+                <span className="episode-play">▶</span>
+                <span>Shadows — Episode 2</span>
+              </button>
+            )}
+          </>
+        ) : (
+          dramas
+            .filter((drama) => drama.videoUrl && drama.id !== 1)
+            .map((drama) => (
+              <button
+                type="button"
+                key={drama.id}
+                className="episode-item"
+                onClick={() => {
+                  setSelectedDrama(drama);
+                  setSelectedEpisode(1);
+                  setShowEpisodes(false);
+                  setShowNextEpisodePrompt(false);
+                }}
+              >
+                <span className="episode-play">▶</span>
+                <span>{drama.title}</span>
+              </button>
+            ))
+        )}
       </div>
     )}
   </div>
@@ -483,7 +516,12 @@ if (selectedDrama) {
                   <article 
   className="drama-card" 
   key={drama.id}
-  onClick={() => setSelectedDrama(drama)}
+  onClick={() => {
+    setSelectedDrama(drama);
+    setSelectedEpisode(1);
+    setShowNextEpisodePrompt(false);
+    setShowEpisodes(false);
+  }}
   style={{ cursor: 'pointer' }}
 >
                     <div className="poster-container">
