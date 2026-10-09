@@ -227,6 +227,7 @@ function App() {
   const [nameInput, setNameInput] = useState("");
   const [selectedDrama, setSelectedDrama] = useState<any | null>(null);
   const [showEpisodes, setShowEpisodes] = useState(false);
+  const [showNextEpisodePrompt, setShowNextEpisodePrompt] = useState(false);
 
   const filteredDramas = useMemo(() => {
     let result = dramas;
@@ -326,7 +327,11 @@ if (selectedDrama) {
     return (
       <div className="video-player-screen" style={{ padding: '20px', background: '#000', minHeight: '100vh', color: '#fff' }}>
         <button 
-          onClick={() => setSelectedDrama(null)}
+          onClick={() => {
+            setSelectedDrama(null);
+            setShowNextEpisodePrompt(false);
+            setShowEpisodes(false);
+          }}
           style={{ marginBottom: '15px', padding: '8px 16px', background: '#e50914', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
         >
           ← Back to Home
@@ -344,7 +349,43 @@ if (selectedDrama) {
     playsInline
     muted
     className="video-element"
+    onEnded={() => {
+      if (selectedDrama.id === 1) {
+        setShowNextEpisodePrompt(true);
+      }
+    }}
+    onPlay={() => setShowNextEpisodePrompt(false)}
   />
+
+  {showNextEpisodePrompt && selectedDrama.id === 1 && (
+    <button
+      type="button"
+      onClick={() => {
+        setShowEpisodes(true);
+        setShowNextEpisodePrompt(false);
+      }}
+      style={{
+        position: 'absolute',
+        left: '50%',
+        bottom: '24px',
+        transform: 'translateX(-50%)',
+        zIndex: 30,
+        width: 'min(340px, calc(100% - 32px))',
+        padding: '16px 20px',
+        background: 'rgba(15, 15, 15, 0.94)',
+        color: '#fff',
+        border: '1px solid rgba(255, 255, 255, 0.35)',
+        borderRadius: '10px',
+        boxShadow: '0 8px 28px rgba(0, 0, 0, 0.55)',
+        fontSize: '16px',
+        fontWeight: 700,
+        textAlign: 'center',
+        cursor: 'pointer'
+      }}
+    >
+      Click here for episode 2
+    </button>
+  )}
 
   <div className="episodes-menu-container">
     <button
@@ -376,6 +417,7 @@ if (selectedDrama) {
               onClick={() => {
                 setSelectedDrama(drama);
                 setShowEpisodes(false);
+                setShowNextEpisodePrompt(false);
               }}
             >
               <span className="episode-play">▶</span>
