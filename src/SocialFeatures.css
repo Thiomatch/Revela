@@ -1,0 +1,146 @@
+
+.video-social-panel {
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 24px;
+  padding: 20px;
+  color: #fff;
+  background: #151515;
+  border: 1px solid #303030;
+  border-radius: 14px;
+}
+
+.social-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.social-action {
+  padding: 10px 15px;
+  color: #fff;
+  background: #252525;
+  border: 1px solid #414141;
+  border-radius: 22px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.social-action:hover {
+  background: #363636;
+}
+
+.social-action.is-liked {
+  color: #ff6575;
+  border-color: #ff6575;
+}
+
+.video-comments h3 {
+  margin: 0 0 16px;
+  font-size: 20px;
+}
+
+.comment-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.comment-form textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px;
+  color: #fff;
+  background: #222;
+  border: 1px solid #444;
+  border-radius: 10px;
+  font: inherit;
+  resize: vertical;
+}
+
+.comment-form button {
+  align-self: flex-start;
+  padding: 10px 16px;
+  color: #fff;
+  background: #e50914;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.comment-form button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.social-message {
+  color: #aaa;
+  font-size: 14px;
+}
+
+.comment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  margin-top: 22px;
+}
+
+.comment-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.comment-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  background: #303030;
+  border-radius: 50%;
+}
+
+.comment-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.comment-author {
+  margin: 0 0 6px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.comment-author span {
+  display: block;
+  margin-top: 4px;
+  color: #999;
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.comment-content {
+  margin: 0;
+  color: #eee;
+  font-size: 14px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 480px) {
+  .video-social-panel {
+    padding: 14px;
+  }
+
+  .social-actions {
+    gap: 8px;
+  }
+
+  .social-action {
+    padding: 9px 11px;
+    font-size: 12px;
+  }
+}
