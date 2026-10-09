@@ -407,57 +407,82 @@ if (selectedDrama) {
     </button>
 
     {showEpisodes && (
-      <div className="episodes-dropdown">
-        <h3>Episodes</h3>
-
+      <div
+        className="episodes-dropdown"
+        style={{
+          background: 'rgba(0, 0, 0, 0.62)',
+          backdropFilter: 'blur(8px)',
+          WebkitBackdropFilter: 'blur(8px)',
+          border: '1px solid rgba(255, 255, 255, 0.22)',
+          borderRadius: '18px',
+          padding: '20px 24px 24px',
+          color: '#fff',
+          boxShadow: '0 8px 28px rgba(0, 0, 0, 0.28)',
+        }}
+      >
         {selectedDrama.id === 1 ? (
           <>
-            <button
-              type="button"
-              className="episode-item"
-              onClick={() => {
-                setSelectedEpisode(1);
-                setShowEpisodes(false);
-                setShowNextEpisodePrompt(false);
-              }}
-            >
-              <span className="episode-play">▶</span>
-              <span>Shadows — Episode 1</span>
-            </button>
-            {unlockedEpisode >= 2 && (
+            <h3 style={{ margin: '0 0 20px', fontSize: '22px', fontWeight: 700 }}>
+              Shadows Season 1
+            </h3>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
               <button
                 type="button"
-                className="episode-item"
+                aria-label="Play episode 1"
+                title="Episode 1"
                 onClick={() => {
-                  setSelectedEpisode(2);
-                  setShowEpisodes(false);
-                  setShowNextEpisodePrompt(false);
-                }}
-              >
-                <span className="episode-play">▶</span>
-                <span>Shadows — Episode 2</span>
-              </button>
-            )}
-          </>
-        ) : (
-          dramas
-            .filter((drama) => drama.videoUrl && drama.id !== 1)
-            .map((drama) => (
-              <button
-                type="button"
-                key={drama.id}
-                className="episode-item"
-                onClick={() => {
-                  setSelectedDrama(drama);
                   setSelectedEpisode(1);
                   setShowEpisodes(false);
                   setShowNextEpisodePrompt(false);
                 }}
-              >
-                <span className="episode-play">▶</span>
-                <span>{drama.title}</span>
-              </button>
-            ))
+                style={{
+                  width: '72px', height: '72px', borderRadius: '50%',
+                  border: selectedEpisode === 1 ? '2px solid #fff' : '1.5px solid rgba(255,255,255,.55)',
+                  background: 'rgba(0,0,0,.18)', color: '#fff',
+                  fontSize: '20px', fontWeight: 700, cursor: 'pointer',
+                }}
+              >E1</button>
+              {unlockedEpisode >= 2 && (
+                <button
+                  type="button"
+                  aria-label="Play episode 2"
+                  title="Episode 2"
+                  onClick={() => {
+                    setSelectedEpisode(2);
+                    setShowEpisodes(false);
+                    setShowNextEpisodePrompt(false);
+                  }}
+                  style={{
+                    width: '72px', height: '72px', borderRadius: '50%',
+                    border: selectedEpisode === 2 ? '2px solid #fff' : '1.5px solid rgba(255,255,255,.55)',
+                    background: 'rgba(0,0,0,.18)', color: '#fff',
+                    fontSize: '20px', fontWeight: 700, cursor: 'pointer',
+                  }}
+                >E2</button>
+              )}
+            </div>
+          </>
+        ) : (
+          <>
+            <h3>Episodes</h3>
+            {dramas
+              .filter((drama) => drama.videoUrl && drama.id !== 1)
+              .map((drama) => (
+                <button
+                  type="button"
+                  key={drama.id}
+                  className="episode-item"
+                  onClick={() => {
+                    setSelectedDrama(drama);
+                    setSelectedEpisode(1);
+                    setShowEpisodes(false);
+                    setShowNextEpisodePrompt(false);
+                  }}
+                >
+                  <span>{drama.title}</span>
+                </button>
+              ))}
+          </>
         )}
       </div>
     )}
