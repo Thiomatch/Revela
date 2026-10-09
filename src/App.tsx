@@ -18,22 +18,21 @@ type UserProfile = {
 };
 
 const dramas: Drama[] = [
-   {
+  {
     id: 1,
     title: "Shadows",
     category: "Deep Waters",
     views: "6.9M",
-    image: "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/image.Shadows.S1.png",
+    image: "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/image.shadowsE1.png",
     videoUrl: "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/Episode%201.mp4",
   },
-  
   {
-    id: 3,
+    id: 2,
     title: "SEWES Students",
     category: "Project",
     views: "4.1M",
     image: "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/t-nail.png",
-    videoUrl: "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/Episode%202.mp4",
+    videoUrl: "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/1001(2).mp4",
   },
 ];
 
@@ -253,7 +252,7 @@ if (selectedDrama) {
         >
           ← Back to Home
         </button>
-        <h2>{selectedDrama.id === 1 ? `Shadows — Episode ${selectedEpisode}` : selectedDrama.title}</h2>
+        <h2>{selectedDrama.id === 1 ? "Shadows Season One" : selectedDrama.title}</h2>
         <p>{selectedDrama.category}</p>
         
         
@@ -263,7 +262,7 @@ if (selectedDrama) {
     src={selectedDrama.id === 1 && selectedEpisode === 2
       ? "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/Episode%202.mp4"
       : selectedDrama.videoUrl}
-    poster={selectedDrama.image || "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/CEO.png"}
+    poster={selectedDrama.image}
     controls
     autoPlay
     playsInline
@@ -363,7 +362,7 @@ if (selectedDrama) {
                   fontSize: '20px', fontWeight: 700, cursor: 'pointer',
                 }}
               >E1</button>
-              <button
+              {unlockedEpisode >= 2 && <button
                   type="button"
                   aria-label="Play episode 2"
                   title="Episode 2"
@@ -378,7 +377,7 @@ if (selectedDrama) {
                     background: 'rgba(0,0,0,.18)', color: '#fff',
                     fontSize: '20px', fontWeight: 700, cursor: 'pointer',
                   }}
-                >E2</button>
+                >E2</button>}
             </div>
           </>
         ) : (
