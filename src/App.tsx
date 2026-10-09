@@ -484,7 +484,7 @@ function App() {
     return (
       <div
         className="video-player-screen"
-        style={{ padding: "20px", background: "#000", minHeight: "100vh", color: "#fff" }}
+        style={{ padding: "8px", background: "#000", minHeight: "100vh", color: "#fff", boxSizing: "border-box" }}
       >
         <button
           type="button"
@@ -496,20 +496,23 @@ function App() {
             setSelectedEpisode(1);
           }}
           style={{
-            marginBottom: "15px",
-            padding: "8px 16px",
+            marginBottom: "4px",
+            padding: "4px 8px",
             background: "#e50914",
             color: "#fff",
             border: "none",
             borderRadius: "4px",
             cursor: "pointer",
+            fontSize: "11px",
+            lineHeight: 1.2,
           }}
         >
           ← Back to Home
         </button>
 
-        <h2>{selectedDrama.id === 1 ? "Shadows Season One" : selectedDrama.title}</h2>
-        <p>{selectedDrama.category}</p>
+        <h2 style={{ margin: "2px 0 6px", fontSize: "15px", lineHeight: 1.2 }}>
+          {selectedDrama.id === 1 ? `EP. ${selectedEpisode}` : selectedDrama.title}
+        </h2>
 
         <div className="video-frame">
           <video
@@ -523,8 +526,8 @@ function App() {
             controls
             autoPlay
             playsInline
-            // Start with sound enabled. Some mobile browsers may still require
-            // a direct tap on the player's sound control due to autoplay rules.
+            // Attempt to start playback with sound enabled. Mobile browsers may
+            // still require the viewer to tap the player's sound control.
             onLoadedData={(event) => {
               const video = event.currentTarget;
               video.muted = false;
