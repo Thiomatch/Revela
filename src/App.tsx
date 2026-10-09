@@ -36,6 +36,8 @@ const dramas: Drama[] = [
   },
 ];
 
+const SHADOWS_EPISODE_2_URL = "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/Episode%202.mp4";
+
 const tabs = ["Popular", "New", "Rankings", "Categories", "Anime"];
 
 function SearchIcon() {
@@ -260,7 +262,7 @@ if (selectedDrama) {
   <video
     key={`${selectedDrama.id}-${selectedEpisode}`}
     src={selectedDrama.id === 1 && selectedEpisode === 2
-      ? "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/Episode%202.mp4"
+      ? SHADOWS_EPISODE_2_URL
       : selectedDrama.videoUrl}
     poster={selectedDrama.image}
     controls
