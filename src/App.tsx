@@ -149,6 +149,7 @@ function App() {
   const [likeCount, setLikeCount] = useState(0);
   const [hasLiked, setHasLiked] = useState(false);
   const [comments, setComments] = useState<VideoComment[]>([]);
+  const [showComments, setShowComments] = useState(false);
   const [commentInput, setCommentInput] = useState("");
   const [socialLoading, setSocialLoading] = useState(false);
   const [commentsLoading, setCommentsLoading] = useState(false);
@@ -455,9 +456,11 @@ if (selectedDrama) {
     <button
       type="button"
       className="video-overlay-action"
-      onClick={() => document.getElementById("revela-comments")?.scrollIntoView({ behavior: "smooth", block: "start" })}
-      aria-label="View comments"
-      title="Comment"
+      onClick={() => setShowComments((previous) => !previous)}
+      aria-label={showComments ? "Hide comments" : "View comments"}
+      aria-expanded={showComments}
+      aria-controls="revela-comments"
+      title={showComments ? "Hide comments" : "Comment"}
     >
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8v.5Z" /></svg>
       <span className="video-overlay-count">{comments.length}</span>
@@ -601,9 +604,9 @@ if (selectedDrama) {
   </div>
 </div>
 
-        <section className="video-social-panel" aria-label="Video reactions and comments">
-
-          <div className="video-comments" id="revela-comments">
+        {showComments && (
+          <section className="video-social-panel" aria-label="Video reactions and comments">
+            <div className="video-comments" id="revela-comments">
             <h3>Comments <span>({comments.length})</span></h3>
             <form className="video-comment-form" onSubmit={handleAddComment}>
               <textarea
@@ -642,8 +645,9 @@ if (selectedDrama) {
                 ))}
               </div>
             )}
-          </div>
-        </section>
+            </div>
+          </section>
+        )}
       </div>
     );
   }
