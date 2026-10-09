@@ -439,6 +439,40 @@ if (selectedDrama) {
     onPlay={() => setShowNextEpisodePrompt(false)}
   />
 
+  <div className="video-social-overlay" aria-label="Video actions">
+    <button
+      type="button"
+      className={`video-overlay-action ${hasLiked ? "is-liked" : ""}`}
+      onClick={handleToggleLike}
+      disabled={socialLoading}
+      aria-label={hasLiked ? "Unlike video" : "Like video"}
+      aria-pressed={hasLiked}
+      title={hasLiked ? "Unlike" : "Like"}
+    >
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21l7.8-7.5 1.1-1.1a5.5 5.5 0 0 0-.1-7.8Z" /></svg>
+      <span className="video-overlay-count">{likeCount}</span>
+    </button>
+    <button
+      type="button"
+      className="video-overlay-action"
+      onClick={() => document.getElementById("revela-comments")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+      aria-label="View comments"
+      title="Comment"
+    >
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8v.5Z" /></svg>
+      <span className="video-overlay-count">{comments.length}</span>
+    </button>
+    <button
+      type="button"
+      className="video-overlay-action"
+      onClick={handleShareVideo}
+      aria-label="Share video"
+      title="Share"
+    >
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2 15 22l-4-9-9-4 20-7Z" /><path d="M22 2 11 13" /></svg>
+    </button>
+  </div>
+
   {showNextEpisodePrompt && selectedDrama.id === 1 && selectedEpisode === 1 && (
     <button
       type="button"
@@ -568,32 +602,6 @@ if (selectedDrama) {
 </div>
 
         <section className="video-social-panel" aria-label="Video reactions and comments">
-          <div className="video-social-actions">
-            <button
-              type="button"
-              className={`social-action-button ${hasLiked ? "is-liked" : ""}`}
-              onClick={handleToggleLike}
-              disabled={socialLoading}
-              aria-pressed={hasLiked}
-            >
-              <span className="social-action-icon" aria-hidden="true">{hasLiked ? "❤️" : "🤍"}</span>
-              <span>{hasLiked ? "Liked" : "Like"}</span>
-              <span className="social-count">{likeCount}</span>
-            </button>
-            <button
-              type="button"
-              className="social-action-button"
-              onClick={() => document.getElementById("revela-comments")?.scrollIntoView({ behavior: "smooth", block: "start" })}
-            >
-              <span className="social-action-icon" aria-hidden="true">💬</span>
-              <span>Comment</span>
-              <span className="social-count">{comments.length}</span>
-            </button>
-            <button type="button" className="social-action-button" onClick={handleShareVideo}>
-              <span className="social-action-icon" aria-hidden="true">↗</span>
-              <span>Share</span>
-            </button>
-          </div>
 
           <div className="video-comments" id="revela-comments">
             <h3>Comments <span>({comments.length})</span></h3>
@@ -700,26 +708,8 @@ if (selectedDrama) {
                     <div className="poster-container">
                       <img
                         src={drama.image}
-                        alt={`Open ${drama.title}`}
+                        alt={drama.title}
                         className="poster"
-                        role="button"
-                        tabIndex={0}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          setSelectedDrama(drama);
-                          setSelectedEpisode(1);
-                          setShowNextEpisodePrompt(false);
-                          setShowEpisodes(false);
-                        }}
-                        onKeyDown={(event) => {
-                          if (event.key === "Enter" || event.key === " ") {
-                            event.preventDefault();
-                            setSelectedDrama(drama);
-                            setSelectedEpisode(1);
-                            setShowNextEpisodePrompt(false);
-                            setShowEpisodes(false);
-                          }
-                        }}
                       />
                       {drama.badge && (
                         <span
