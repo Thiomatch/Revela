@@ -348,7 +348,6 @@ function App() {
 
       setComments((existing) => [data as VideoComment, ...existing]);
       setCommentInput("");
-      setShowComments(false);
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Could not post your comment. Please try again.";
       alert(message);
@@ -524,7 +523,15 @@ function App() {
             controls
             autoPlay
             playsInline
-            muted
+            // Start with sound enabled. Some mobile browsers may still require
+            // a direct tap on the player's sound control due to autoplay rules.
+            onLoadedData={(event) => {
+              const video = event.currentTarget;
+              video.muted = false;
+              void video.play().catch((error) => {
+                console.info("Browser blocked autoplay with sound:", error);
+              });
+            }}
             className="video-element"
             onEnded={() => {
               if (selectedDrama.id === 1 && selectedEpisode === 1) {
