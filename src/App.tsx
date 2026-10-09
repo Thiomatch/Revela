@@ -23,7 +23,7 @@ const dramas: Drama[] = [
     title: "Shadows",
     category: "Deep Waters",
     views: "6.9M",
-    image: "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/image.shadowsE1.png",
+    image: "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/image.Shadows.S1.png",
     videoUrl: "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/Episode%201.mp4",
   },
   
@@ -34,85 +34,6 @@ const dramas: Drama[] = [
     views: "4.1M",
     image: "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/t-nail.png",
     videoUrl: "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/Episode%202.mp4",
-  },
-  {
-    id: 4,
-    title: "Shifter Academy: Taming Three Wild Alphas",
-    category: "Supernatural",
-    views: "121M",
-    image:
-      "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/CEO.png",
-    badge: "Hot",
-  },
-  {
-    id: 5,
-    title: "The Gift Bride of a Mafia Don",
-    category: "Revenge",
-    views: "2.9M",
-    image:
-      "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/CEO.png",
-    badge: "New",
-  },
-  {
-    id: 6,
-    title: "She Came Back as My Brother's Fiancée",
-    category: "Revenge",
-    views: "471K",
-    image:
-      "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/CEO.png",
-    badge: "New",
-  },
-  {
-    id: 7,
-    title: "My Client's Son Wants Me",
-    category: "Sweet Love",
-    views: "838K",
-    image:
-      "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/CEO.png",
-    badge: "New",
-  },
-  {
-    id: 8,
-    title: "Trapped in a Lover's Game",
-    category: "Sweet Love",
-    views: "1.2M",
-    image:
-      "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/CEO.png",
-    badge: "New",
-  },
-  {
-    id: 9,
-    title: "The Dragon King's Pregnant Runaway",
-    category: "Fantasy",
-    views: "6.4M",
-    image:
-      "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/CEO.png",
-  },
-  {
-    id: 10,
-    title: "The CEO's Secret Bride",
-    category: "Billionaire",
-    views: "3.7M",
-    image:
-      "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/CEO.png",
-    badge: "New",
-  },
-  {
-    id: 11,
-    title: "My Billionaire Ex Came Back",
-    category: "Romance",
-    views: "8.2M",
-    image:
-      "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/CEO.png",
-  },
-  {
-    id: 12,
-    title: "Married to the Cold CEO",
-    category: "Romance",
-    views: "5.6M",
-    image:
-      "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/CEO.png",
-    badge: "Hot",
   },
 ];
 
