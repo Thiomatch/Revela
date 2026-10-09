@@ -23,7 +23,7 @@ const dramas: Drama[] = [
     title: "Shadows",
     category: "Deep Waters",
     views: "6.9M",
-    image: "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/image.Shadows.S1.png",
+    image: "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/image.shadowsE1.png",
     videoUrl: "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/Episode%201.mp4",
   },
   {
@@ -31,8 +31,8 @@ const dramas: Drama[] = [
     title: "SEWES Students",
     category: "Project",
     views: "4.1M",
-    image: "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/image.Shadows.S1.png",
-    videoUrl: "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/Episode%202.mp4",
+    image: "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/t-nail.png",
+    videoUrl: "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/1001(2).mp4",
   },
 ];
 
@@ -364,22 +364,22 @@ if (selectedDrama) {
                   fontSize: '20px', fontWeight: 700, cursor: 'pointer',
                 }}
               >E1</button>
-              {unlockedEpisode >= 2 && <button
-                  type="button"
-                  aria-label="Play episode 2"
-                  title="Episode 2"
-                  onClick={() => {
-                    setSelectedEpisode(2);
-                    setShowEpisodes(false);
-                    setShowNextEpisodePrompt(false);
-                  }}
-                  style={{
-                    width: '72px', height: '72px', borderRadius: '50%',
-                    border: selectedEpisode === 2 ? '2px solid #fff' : '1.5px solid rgba(255,255,255,.55)',
-                    background: 'rgba(0,0,0,.18)', color: '#fff',
-                    fontSize: '20px', fontWeight: 700, cursor: 'pointer',
-                  }}
-                >E2</button>}
+              <button
+                type="button"
+                aria-label="Play episode 2"
+                title="Episode 2"
+                onClick={() => {
+                  setSelectedEpisode(2);
+                  setShowEpisodes(false);
+                  setShowNextEpisodePrompt(false);
+                }}
+                style={{
+                  width: '72px', height: '72px', borderRadius: '50%',
+                  border: selectedEpisode === 2 ? '2px solid #fff' : '1.5px solid rgba(255,255,255,.55)',
+                  background: 'rgba(0,0,0,.18)', color: '#fff',
+                  fontSize: '20px', fontWeight: 700, cursor: 'pointer',
+                }}
+              >E2</button>
             </div>
           </>
         ) : (
