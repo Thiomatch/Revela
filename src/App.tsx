@@ -442,8 +442,7 @@ if (selectedDrama) {
                   fontSize: '20px', fontWeight: 700, cursor: 'pointer',
                 }}
               >E1</button>
-              {unlockedEpisode >= 2 && (
-                <button
+              <button
                   type="button"
                   aria-label="Play episode 2"
                   title="Episode 2"
@@ -459,7 +458,6 @@ if (selectedDrama) {
                     fontSize: '20px', fontWeight: 700, cursor: 'pointer',
                   }}
                 >E2</button>
-              )}
             </div>
           </>
         ) : (
