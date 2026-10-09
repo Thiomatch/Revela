@@ -37,7 +37,8 @@ const dramas: Drama[] = [
   },
 ];
 
-const SHADOWS_EPISODE_2_URL = "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/Episode%202.mp4";
+const SHADOWS_EPISODE_2_URL =
+  "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/Episode%202.mp4";
 
 const tabs = ["Popular", "New", "Rankings", "Categories", "Anime"];
 
@@ -134,14 +135,14 @@ function App() {
   const [search, setSearch] = useState("");
   const [activeNav, setActiveNav] = useState("Home");
 
-  // Authentication & Modal States
+  // Authentication & modal states
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authMode, setAuthMode] = useState<"login" | "register">("login");
   const [emailInput, setEmailInput] = useState("");
   const [passwordInput, setPasswordInput] = useState("");
   const [nameInput, setNameInput] = useState("");
-  const [selectedDrama, setSelectedDrama] = useState<any | null>(null);
+  const [selectedDrama, setSelectedDrama] = useState<Drama | null>(null);
   const [showEpisodes, setShowEpisodes] = useState(false);
   const [showNextEpisodePrompt, setShowNextEpisodePrompt] = useState(false);
   const [selectedEpisode, setSelectedEpisode] = useState(1);
@@ -162,6 +163,7 @@ function App() {
     if (!selectedDrama) return;
 
     let cancelled = false;
+
     const loadSocialData = async () => {
       setCommentsLoading(true);
       try {
@@ -174,6 +176,7 @@ function App() {
 
         const { data: userData, error: userError } = await supabase.auth.getUser();
         if (userError) throw userError;
+
         if (userData.user) {
           const { data: ownLike, error: ownLikeError } = await supabase
             .from("video_likes")
@@ -205,13 +208,18 @@ function App() {
     setHasLiked(false);
     setLikeCount(0);
     setComments([]);
+    setShowComments(false);
     void loadSocialData();
-    return () => { cancelled = true; };
+
+    return () => {
+      cancelled = true;
+    };
   }, [selectedDrama, selectedEpisode, videoKey]);
 
   const requireSignedInUser = async () => {
     const { data, error } = await supabase.auth.getUser();
     if (error) throw error;
+
     if (!data.user) {
       alert("Please sign in to like videos or comment.");
       setSelectedDrama(null);
@@ -219,12 +227,14 @@ function App() {
       setIsAuthModalOpen(true);
       return null;
     }
+
     return data.user;
   };
 
   const handleToggleLike = async () => {
     if (socialLoading) return;
     setSocialLoading(true);
+
     try {
       const user = await requireSignedInUser();
       if (!user) return;
@@ -236,12 +246,14 @@ function App() {
           .eq("video_key", videoKey)
           .eq("user_id", user.id);
         if (error) throw error;
+
         setHasLiked(false);
         setLikeCount((count) => Math.max(0, count - 1));
       } else {
         const { error } = await supabase
           .from("video_likes")
           .insert({ video_key: videoKey, user_id: user.id });
+
         if (error) {
           if (error.code === "23505") {
             setHasLiked(true);
@@ -253,8 +265,9 @@ function App() {
           setLikeCount((count) => count + 1);
         }
       }
-    } catch (error: any) {
-      alert(error.message || "Could not update your like. Please try again.");
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Could not update your like. Please try again.";
+      alert(message);
     } finally {
       setSocialLoading(false);
     }
@@ -262,23 +275,36 @@ function App() {
 
   const handleAddComment = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
     const body = commentInput.trim();
     if (!body || socialLoading) return;
+
     setSocialLoading(true);
     try {
       const user = await requireSignedInUser();
       if (!user) return;
-      const displayName = user.user_metadata?.full_name || user.email?.split("@")[0] || "Revela user";
+
+      const displayName =
+        user.user_metadata?.full_name || user.email?.split("@")[0] || "Revela user";
+
       const { data, error } = await supabase
         .from("video_comments")
-        .insert({ video_key: videoKey, user_id: user.id, display_name: displayName, body })
+        .insert({
+          video_key: videoKey,
+          user_id: user.id,
+          display_name: displayName,
+          body,
+        })
         .select("id, user_id, display_name, body, created_at")
         .single();
+
       if (error) throw error;
+
       setComments((existing) => [data as VideoComment, ...existing]);
       setCommentInput("");
-    } catch (error: any) {
-      alert(error.message || "Could not post your comment. Please try again.");
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Could not post your comment. Please try again.";
+      alert(message);
     } finally {
       setSocialLoading(false);
     }
@@ -286,22 +312,30 @@ function App() {
 
   const handleShareVideo = async () => {
     const shareUrl = selectedDrama
-      ? (selectedDrama.id === 1 && selectedEpisode === 2
-          ? SHADOWS_EPISODE_2_URL
-          : selectedDrama.videoUrl || window.location.href)
+      ? selectedDrama.id === 1 && selectedEpisode === 2
+        ? SHADOWS_EPISODE_2_URL
+        : selectedDrama.videoUrl || window.location.href
       : window.location.href;
+
     const shareTitle = selectedDrama ? `${selectedDrama.title} — Revela` : "Revela";
+
     try {
       if (navigator.share) {
-        await navigator.share({ title: shareTitle, text: `Watch ${selectedDrama?.title ?? "this video"} on Revela`, url: shareUrl });
+        await navigator.share({
+          title: shareTitle,
+          text: `Watch ${selectedDrama?.title ?? "this video"} on Revela`,
+          url: shareUrl,
+        });
       } else if (navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(shareUrl);
         alert("Video link copied. You can now share it.");
       } else {
         window.prompt("Copy this link to share the video:", shareUrl);
       }
-    } catch (error: any) {
-      if (error?.name !== "AbortError") alert("Could not open sharing. Please copy the page link from your browser.");
+    } catch (error: unknown) {
+      if (error instanceof Error && error.name !== "AbortError") {
+        alert("Could not open sharing. Please copy the page link from your browser.");
+      }
     }
   };
 
@@ -313,15 +347,12 @@ function App() {
     }
 
     if (activeTab === "Rankings") {
-      result = [...dramas].sort(
-        (a, b) => parseFloat(b.views) - parseFloat(a.views)
-      );
+      result = [...dramas].sort((a, b) => parseFloat(b.views) - parseFloat(a.views));
     }
 
     if (activeTab === "Categories") {
       result = dramas.filter(
-        (drama) =>
-          drama.category === "Revenge" || drama.category === "Sweet Love"
+        (drama) => drama.category === "Revenge" || drama.category === "Sweet Love"
       );
     }
 
@@ -341,20 +372,16 @@ function App() {
     return result;
   }, [activeTab, search]);
 
-  const goToHome = () => {
-    setActiveNav("Home");
-  };
-
-  const goToProfile = () => {
-    setActiveNav("Profile");
-  };
+  const goToHome = () => setActiveNav("Home");
+  const goToProfile = () => setActiveNav("Profile");
 
   const showComingSoon = (name: string) => {
     alert(`${name} section will be added next.`);
   };
 
-  const handleAuthSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleAuthSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
     if (!emailInput || !passwordInput || (authMode === "register" && !nameInput)) {
       alert("Please fill in all required fields.");
       return;
@@ -365,10 +392,9 @@ function App() {
         const { error } = await supabase.auth.signUp({
           email: emailInput,
           password: passwordInput,
-          options: {
-            data: { full_name: nameInput }
-          }
+          options: { data: { full_name: nameInput } },
         });
+
         if (error) throw error;
         alert("Registration successful! Check your email if verification is required, or sign in now.");
         setAuthMode("login");
@@ -377,287 +403,350 @@ function App() {
           email: emailInput,
           password: passwordInput,
         });
+
         if (error) throw error;
-        
+
         const user = data.user;
         setCurrentUser({
           name: user.user_metadata?.full_name || emailInput.split("@")[0],
           email: user.email || emailInput,
         });
 
-        // Reset form & close modal
         setIsAuthModalOpen(false);
         setEmailInput("");
         setPasswordInput("");
         setNameInput("");
       }
-    } catch (error: any) {
-      alert(error.message || "Authentication failed");
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Authentication failed";
+      alert(message);
     }
   };
 
-  const handleSignOut = () => {
-    setCurrentUser(null);
+  const handleSignOut = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      setCurrentUser(null);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Could not sign out.";
+      alert(message);
+    }
   };
-if (selectedDrama) {
+
+  if (selectedDrama) {
     return (
-      <div className="video-player-screen" style={{ padding: '20px', background: '#000', minHeight: '100vh', color: '#fff' }}>
-        <button 
+      <div
+        className="video-player-screen"
+        style={{ padding: "20px", background: "#000", minHeight: "100vh", color: "#fff" }}
+      >
+        <button
+          type="button"
           onClick={() => {
             setSelectedDrama(null);
             setShowNextEpisodePrompt(false);
             setShowEpisodes(false);
+            setShowComments(false);
             setSelectedEpisode(1);
           }}
-          style={{ marginBottom: '15px', padding: '8px 16px', background: '#e50914', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+          style={{
+            marginBottom: "15px",
+            padding: "8px 16px",
+            background: "#e50914",
+            color: "#fff",
+            border: "none",
+            borderRadius: "4px",
+            cursor: "pointer",
+          }}
         >
           ← Back to Home
         </button>
+
         <h2>{selectedDrama.id === 1 ? "Shadows Season One" : selectedDrama.title}</h2>
         <p>{selectedDrama.category}</p>
-        
-        
-<div className="video-frame">
-  <video
-    key={`${selectedDrama.id}-${selectedEpisode}`}
-    src={selectedDrama.id === 1 && selectedEpisode === 2
-      ? SHADOWS_EPISODE_2_URL
-      : selectedDrama.videoUrl}
-    poster={selectedDrama.image}
-    controls
-    autoPlay
-    playsInline
-    muted
-    className="video-element"
-    onEnded={() => {
-      if (selectedDrama.id === 1 && selectedEpisode === 1) {
-        setUnlockedEpisode(2);
-        setShowNextEpisodePrompt(true);
-      } else {
-        setShowNextEpisodePrompt(false);
-      }
-    }}
-    onPlay={() => setShowNextEpisodePrompt(false)}
-  />
 
-  <div className="video-social-overlay" aria-label="Video actions">
-    <button
-      type="button"
-      className={`video-overlay-action ${hasLiked ? "is-liked" : ""}`}
-      onClick={handleToggleLike}
-      disabled={socialLoading}
-      aria-label={hasLiked ? "Unlike video" : "Like video"}
-      aria-pressed={hasLiked}
-      title={hasLiked ? "Unlike" : "Like"}
-    >
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21l7.8-7.5 1.1-1.1a5.5 5.5 0 0 0-.1-7.8Z" /></svg>
-      <span className="video-overlay-count">{likeCount}</span>
-    </button>
-    <button
-      type="button"
-      className="video-overlay-action"
-      onClick={() => setShowComments((previous) => !previous)}
-      aria-label={showComments ? "Hide comments" : "View comments"}
-      aria-expanded={showComments}
-      aria-controls="revela-comments"
-      title={showComments ? "Hide comments" : "Comment"}
-    >
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8v.5Z" /></svg>
-      <span className="video-overlay-count">{comments.length}</span>
-    </button>
-    <button
-      type="button"
-      className="video-overlay-action"
-      onClick={handleShareVideo}
-      aria-label="Share video"
-      title="Share"
-    >
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2 15 22l-4-9-9-4 20-7Z" /><path d="M22 2 11 13" /></svg>
-    </button>
-  </div>
+        <div className="video-frame">
+          <video
+            key={`${selectedDrama.id}-${selectedEpisode}`}
+            src={
+              selectedDrama.id === 1 && selectedEpisode === 2
+                ? SHADOWS_EPISODE_2_URL
+                : selectedDrama.videoUrl
+            }
+            poster={selectedDrama.image}
+            controls
+            autoPlay
+            playsInline
+            muted
+            className="video-element"
+            onEnded={() => {
+              if (selectedDrama.id === 1 && selectedEpisode === 1) {
+                setUnlockedEpisode(2);
+                setShowNextEpisodePrompt(true);
+              } else {
+                setShowNextEpisodePrompt(false);
+              }
+            }}
+            onPlay={() => setShowNextEpisodePrompt(false)}
+          />
 
-  {showNextEpisodePrompt && selectedDrama.id === 1 && selectedEpisode === 1 && (
-    <button
-      type="button"
-      onClick={() => {
-        setSelectedEpisode(2);
-        setShowEpisodes(false);
-        setShowNextEpisodePrompt(false);
-      }}
-      style={{
-        position: 'absolute',
-        left: '50%',
-        bottom: '24px',
-        transform: 'translateX(-50%)',
-        zIndex: 30,
-        width: 'min(340px, calc(100% - 32px))',
-        padding: '16px 20px',
-        background: 'rgba(15, 15, 15, 0.94)',
-        color: '#fff',
-        border: '1px solid rgba(255, 255, 255, 0.35)',
-        borderRadius: '10px',
-        boxShadow: '0 8px 28px rgba(0, 0, 0, 0.55)',
-        fontSize: '16px',
-        fontWeight: 700,
-        textAlign: 'center',
-        cursor: 'pointer'
-      }}
-    >
-      Click here to view episode 2
-    </button>
-  )}
+          <div className="video-social-overlay" aria-label="Video actions">
+            <button
+              type="button"
+              className={`video-overlay-action ${hasLiked ? "is-liked" : ""}`}
+              onClick={(event) => {
+                event.stopPropagation();
+                void handleToggleLike();
+              }}
+              disabled={socialLoading}
+              aria-label={hasLiked ? "Unlike video" : "Like video"}
+              aria-pressed={hasLiked}
+              title={hasLiked ? "Unlike" : "Like"}
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21l7.8-7.5 1.1-1.1a5.5 5.5 0 0 0-.1-7.8Z" />
+              </svg>
+              <span className="video-overlay-count">{likeCount}</span>
+            </button>
 
-  <div className="episodes-menu-container">
-    <button
-      type="button"
-      className="episodes-menu-button"
-      onClick={() => setShowEpisodes((previous) => !previous)}
-      aria-label="Show episodes"
-      aria-expanded={showEpisodes}
-    >
-      <span className="episodes-hamburger">
-        <span></span>
-        <span></span>
-        <span></span>
-      </span>
-      <span className="episodes-label">Episodes</span>
-    </button>
+            <button
+              type="button"
+              className="video-overlay-action"
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                setShowComments((previous) => !previous);
+              }}
+              aria-label={showComments ? "Hide comments" : "View comments"}
+              aria-expanded={showComments}
+              aria-controls="revela-comments"
+              title={showComments ? "Hide comments" : "Comment"}
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8v.5Z" />
+              </svg>
+              <span className="video-overlay-count">{comments.length}</span>
+            </button>
 
-    {showEpisodes && (
-      <div
-        className="episodes-dropdown"
-        style={{
-          background: 'rgba(0, 0, 0, 0.62)',
-          backdropFilter: 'blur(8px)',
-          WebkitBackdropFilter: 'blur(8px)',
-          border: '1px solid rgba(255, 255, 255, 0.22)',
-          borderRadius: '18px',
-          padding: '20px 24px 24px',
-          color: '#fff',
-          boxShadow: '0 8px 28px rgba(0, 0, 0, 0.28)',
-        }}
-      >
-        {selectedDrama.id === 1 ? (
-          <>
-            <h3 style={{ margin: '0 0 20px', fontSize: '22px', fontWeight: 700 }}>
-              Shadows Season 1
-            </h3>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <button
-                type="button"
-                aria-label="Play episode 1"
-                title="Episode 1"
-                onClick={() => {
-                  setSelectedEpisode(1);
-                  setShowEpisodes(false);
-                  setShowNextEpisodePrompt(false);
-                }}
+            <button
+              type="button"
+              className="video-overlay-action"
+              onClick={(event) => {
+                event.stopPropagation();
+                void handleShareVideo();
+              }}
+              aria-label="Share video"
+              title="Share"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M22 2 15 22l-4-9-9-4 20-7Z" />
+                <path d="M22 2 11 13" />
+              </svg>
+            </button>
+          </div>
+
+          {showNextEpisodePrompt && selectedDrama.id === 1 && selectedEpisode === 1 && (
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedEpisode(2);
+                setShowEpisodes(false);
+                setShowNextEpisodePrompt(false);
+              }}
+              style={{
+                position: "absolute",
+                left: "50%",
+                bottom: "24px",
+                transform: "translateX(-50%)",
+                zIndex: 30,
+                width: "min(340px, calc(100% - 32px))",
+                padding: "16px 20px",
+                background: "rgba(15, 15, 15, 0.94)",
+                color: "#fff",
+                border: "1px solid rgba(255, 255, 255, 0.35)",
+                borderRadius: "10px",
+                boxShadow: "0 8px 28px rgba(0, 0, 0, 0.55)",
+                fontSize: "16px",
+                fontWeight: 700,
+                textAlign: "center",
+                cursor: "pointer",
+              }}
+            >
+              Click here to view episode 2
+            </button>
+          )}
+
+          <div className="episodes-menu-container">
+            <button
+              type="button"
+              className="episodes-menu-button"
+              onClick={() => setShowEpisodes((previous) => !previous)}
+              aria-label="Show episodes"
+              aria-expanded={showEpisodes}
+            >
+              <span className="episodes-hamburger">
+                <span />
+                <span />
+                <span />
+              </span>
+              <span className="episodes-label">Episodes</span>
+            </button>
+
+            {showEpisodes && (
+              <div
+                className="episodes-dropdown"
                 style={{
-                  width: '72px', height: '72px', borderRadius: '50%',
-                  border: selectedEpisode === 1 ? '2px solid #fff' : '1.5px solid rgba(255,255,255,.55)',
-                  background: 'rgba(0,0,0,.18)', color: '#fff',
-                  fontSize: '20px', fontWeight: 700, cursor: 'pointer',
+                  background: "rgba(0, 0, 0, 0.82)",
+                  backdropFilter: "blur(8px)",
+                  WebkitBackdropFilter: "blur(8px)",
+                  border: "1px solid rgba(255, 255, 255, 0.22)",
+                  borderRadius: "18px",
+                  padding: "20px 24px 24px",
+                  color: "#fff",
+                  boxShadow: "0 8px 28px rgba(0, 0, 0, 0.28)",
+                  position: "relative",
+                  zIndex: 40,
                 }}
-              >E1</button>
-              <button
-                type="button"
-                aria-label="Play episode 2"
-                title="Episode 2"
-                onClick={() => {
-                  setSelectedEpisode(2);
-                  setShowEpisodes(false);
-                  setShowNextEpisodePrompt(false);
-                }}
-                style={{
-                  width: '72px', height: '72px', borderRadius: '50%',
-                  border: selectedEpisode === 2 ? '2px solid #fff' : '1.5px solid rgba(255,255,255,.55)',
-                  background: 'rgba(0,0,0,.18)', color: '#fff',
-                  fontSize: '20px', fontWeight: 700, cursor: 'pointer',
-                }}
-              >E2</button>
-            </div>
-          </>
-        ) : (
-          <>
-            <h3>Episodes</h3>
-            {dramas
-              .filter((drama) => drama.videoUrl && drama.id !== 1)
-              .map((drama) => (
-                <button
-                  type="button"
-                  key={drama.id}
-                  className="episode-item"
-                  onClick={() => {
-                    setSelectedDrama(drama);
-                    setSelectedEpisode(1);
-                    setShowEpisodes(false);
-                    setShowNextEpisodePrompt(false);
-                  }}
-                >
-                  <span>{drama.title}</span>
-                </button>
-              ))}
-          </>
-        )}
-      </div>
-    )}
-  </div>
-</div>
+              >
+                {selectedDrama.id === 1 ? (
+                  <>
+                    <h3 style={{ margin: "0 0 20px", fontSize: "22px", fontWeight: 700 }}>
+                      Shadows Season 1
+                    </h3>
+                    <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+                      <button
+                        type="button"
+                        aria-label="Play episode 1"
+                        title="Episode 1"
+                        onClick={() => {
+                          setSelectedEpisode(1);
+                          setShowEpisodes(false);
+                          setShowNextEpisodePrompt(false);
+                        }}
+                        style={{
+                          width: "72px",
+                          height: "72px",
+                          borderRadius: "50%",
+                          border: selectedEpisode === 1 ? "2px solid #fff" : "1.5px solid rgba(255,255,255,.55)",
+                          background: "rgba(0,0,0,.18)",
+                          color: "#fff",
+                          fontSize: "20px",
+                          fontWeight: 700,
+                          cursor: "pointer",
+                        }}
+                      >
+                        E1
+                      </button>
+                      <button
+                        type="button"
+                        aria-label="Play episode 2"
+                        title="Episode 2"
+                        onClick={() => {
+                          setSelectedEpisode(2);
+                          setShowEpisodes(false);
+                          setShowNextEpisodePrompt(false);
+                        }}
+                        style={{
+                          width: "72px",
+                          height: "72px",
+                          borderRadius: "50%",
+                          border: selectedEpisode === 2 ? "2px solid #fff" : "1.5px solid rgba(255,255,255,.55)",
+                          background: "rgba(0,0,0,.18)",
+                          color: "#fff",
+                          fontSize: "20px",
+                          fontWeight: 700,
+                          cursor: "pointer",
+                        }}
+                      >
+                        E2
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <h3>Episodes</h3>
+                    {dramas
+                      .filter((drama) => drama.videoUrl && drama.id !== 1)
+                      .map((drama) => (
+                        <button
+                          type="button"
+                          key={drama.id}
+                          className="episode-item"
+                          onClick={() => {
+                            setSelectedDrama(drama);
+                            setSelectedEpisode(1);
+                            setShowEpisodes(false);
+                            setShowNextEpisodePrompt(false);
+                          }}
+                        >
+                          <span>{drama.title}</span>
+                        </button>
+                      ))}
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
 
         {showComments && (
           <section className="video-social-panel" aria-label="Video reactions and comments">
             <div className="video-comments" id="revela-comments">
-            <h3>Comments <span>({comments.length})</span></h3>
-            <form className="video-comment-form" onSubmit={handleAddComment}>
-              <textarea
-                value={commentInput}
-                onChange={(event) => setCommentInput(event.target.value)}
-                placeholder="Write a comment..."
-                aria-label="Write a comment"
-                maxLength={1000}
-                rows={3}
-              />
-              <div className="comment-form-footer">
-                <span>{commentInput.length}/1000</span>
-                <button type="submit" disabled={socialLoading || !commentInput.trim()}>
-                  {socialLoading ? "Please wait..." : "Post comment"}
-                </button>
-              </div>
-            </form>
+              <h3>
+                Comments <span>({comments.length})</span>
+              </h3>
 
-            {commentsLoading ? (
-              <p className="comments-empty">Loading comments...</p>
-            ) : comments.length === 0 ? (
-              <p className="comments-empty">No comments yet. Be the first to comment.</p>
-            ) : (
-              <div className="video-comment-list">
-                {comments.map((comment) => (
-                  <article className="video-comment" key={comment.id}>
-                    <div className="comment-avatar" aria-hidden="true">{comment.display_name.charAt(0).toUpperCase()}</div>
-                    <div className="comment-content">
-                      <div className="comment-meta">
-                        <strong>{comment.display_name}</strong>
-                        <time dateTime={comment.created_at}>{new Date(comment.created_at).toLocaleString()}</time>
+              <form className="video-comment-form" onSubmit={handleAddComment}>
+                <textarea
+                  value={commentInput}
+                  onChange={(event) => setCommentInput(event.target.value)}
+                  placeholder="Write a comment..."
+                  aria-label="Write a comment"
+                  maxLength={1000}
+                  rows={3}
+                />
+                <div className="comment-form-footer">
+                  <span>{commentInput.length}/1000</span>
+                  <button type="submit" disabled={socialLoading || !commentInput.trim()}>
+                    {socialLoading ? "Please wait..." : "Post comment"}
+                  </button>
+                </div>
+              </form>
+
+              {commentsLoading ? (
+                <p className="comments-empty">Loading comments...</p>
+              ) : comments.length === 0 ? (
+                <p className="comments-empty">No comments yet. Be the first to comment.</p>
+              ) : (
+                <div className="video-comment-list">
+                  {comments.map((comment) => (
+                    <article className="video-comment" key={comment.id}>
+                      <div className="comment-avatar" aria-hidden="true">
+                        {comment.display_name.charAt(0).toUpperCase()}
                       </div>
-                      <p>{comment.body}</p>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            )}
+                      <div className="comment-content">
+                        <div className="comment-meta">
+                          <strong>{comment.display_name}</strong>
+                          <time dateTime={comment.created_at}>
+                            {new Date(comment.created_at).toLocaleString()}
+                          </time>
+                        </div>
+                        <p>{comment.body}</p>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )}
             </div>
           </section>
         )}
       </div>
     );
   }
+
   return (
     <div className="app-shell">
       <div className="app-container">
-        
-        {/* =========================
-            HOME
-        ========================= */}
         {activeNav === "Home" && (
           <>
             <header className="top-header">
@@ -665,17 +754,17 @@ if (selectedDrama) {
                 <SearchIcon />
                 <input
                   value={search}
-                  onChange={(e) => setSearch(e.target.value)}
+                  onChange={(event) => setSearch(event.target.value)}
                   placeholder="Deny Me, Dragon King"
                   aria-label="Search dramas"
                 />
               </div>
 
               <div className="header-actions">
-                <button className="header-button">
+                <button type="button" className="header-button" onClick={() => showComingSoon("Membership")}>
                   <CrownIcon />
                 </button>
-                <button className="header-button">
+                <button type="button" className="header-button" onClick={() => showComingSoon("Rewards")}>
                   <GiftIcon />
                 </button>
               </div>
@@ -684,10 +773,9 @@ if (selectedDrama) {
             <nav className="category-tabs">
               {tabs.map((tab) => (
                 <button
+                  type="button"
                   key={tab}
-                  className={`category-tab ${
-                    activeTab === tab ? "selected" : ""
-                  }`}
+                  className={`category-tab ${activeTab === tab ? "selected" : ""}`}
                   onClick={() => setActiveTab(tab)}
                 >
                   {tab}
@@ -698,29 +786,22 @@ if (selectedDrama) {
             <main className="content">
               <div className="drama-grid">
                 {filteredDramas.map((drama) => (
-                  <article 
-  className="drama-card" 
-  key={drama.id}
-  onClick={() => {
-    setSelectedDrama(drama);
-    setSelectedEpisode(1);
-    setShowNextEpisodePrompt(false);
-    setShowEpisodes(false);
-  }}
-  style={{ cursor: 'pointer' }}
->
+                  <article
+                    className="drama-card"
+                    key={drama.id}
+                    onClick={() => {
+                      setSelectedDrama(drama);
+                      setSelectedEpisode(1);
+                      setShowNextEpisodePrompt(false);
+                      setShowEpisodes(false);
+                      setShowComments(false);
+                    }}
+                    style={{ cursor: "pointer" }}
+                  >
                     <div className="poster-container">
-                      <img
-                        src={drama.image}
-                        alt={drama.title}
-                        className="poster"
-                      />
+                      <img src={drama.image} alt={drama.title} className="poster" />
                       {drama.badge && (
-                        <span
-                          className={`poster-badge ${
-                            drama.badge === "Hot" ? "hot" : "new"
-                          }`}
-                        >
+                        <span className={`poster-badge ${drama.badge === "Hot" ? "hot" : "new"}`}>
                           {drama.badge}
                         </span>
                       )}
@@ -744,58 +825,44 @@ if (selectedDrama) {
               )}
             </main>
 
-            <button
-              className="discount-floating"
-              onClick={() => showComingSoon("Discount")}
-            >
+            <button className="discount-floating" onClick={() => showComingSoon("Discount")}>
               <span className="discount-emoji">🎁</span>
               <span>Discount</span>
             </button>
 
             <button
               className="floating-close"
-              onClick={(e) => {
-                const button = e.currentTarget;
-                button.style.display = "none";
+              onClick={(event) => {
+                event.stopPropagation();
+                event.currentTarget.style.display = "none";
               }}
+              aria-label="Close floating discount control"
             >
               ×
             </button>
           </>
         )}
 
-        {/* =========================
-            PROFILE PAGE
-        ========================= */}
         {activeNav === "Profile" && (
           <main className="profile-page">
             <header className="profile-header">
               <h1>Profile</h1>
-              <button
-                className="settings-button"
-                onClick={() => showComingSoon("Settings")}
-              >
+              <button className="settings-button" onClick={() => showComingSoon("Settings")}>
                 ⚙
               </button>
             </header>
 
-            {/* PROFILE CARD */}
             <section className="profile-card">
               <div className="profile-avatar">
                 <ProfileIcon />
               </div>
-
               <div className="profile-info">
                 <h2>{currentUser ? currentUser.name : "Welcome to REVELA"}</h2>
-                <p>
-                  {currentUser
-                    ? currentUser.email
-                    : "Sign in to personalize your experience"}
-                </p>
+                <p>{currentUser ? currentUser.email : "Sign in to personalize your experience"}</p>
               </div>
 
               {currentUser ? (
-                <button className="login-button" onClick={handleSignOut}>
+                <button className="login-button" onClick={() => void handleSignOut()}>
                   Sign Out
                 </button>
               ) : (
@@ -811,7 +878,6 @@ if (selectedDrama) {
               )}
             </section>
 
-            {/* COINS */}
             <section className="wallet-card">
               <div className="wallet-item">
                 <div className="wallet-icon coin">🪙</div>
@@ -820,7 +886,7 @@ if (selectedDrama) {
                   <span>Coins</span>
                 </div>
               </div>
-              <div className="wallet-divider"></div>
+              <div className="wallet-divider" />
               <div className="wallet-item">
                 <div className="wallet-icon gift">🎁</div>
                 <div>
@@ -830,60 +896,36 @@ if (selectedDrama) {
               </div>
             </section>
 
-            {/* MENU */}
             <section className="profile-menu">
-              <button
-                className="profile-menu-item"
-                onClick={() => showComingSoon("Watch History")}
-              >
+              <button className="profile-menu-item" onClick={() => showComingSoon("Watch History")}>
                 <span className="menu-icon">🕘</span>
                 <span className="menu-text">Watch History</span>
                 <ChevronIcon />
               </button>
-
-              <button
-                className="profile-menu-item"
-                onClick={() => showComingSoon("My List")}
-              >
+              <button className="profile-menu-item" onClick={() => showComingSoon("My List")}>
                 <span className="menu-icon">🔖</span>
                 <span className="menu-text">My List</span>
                 <ChevronIcon />
               </button>
-
-              <button
-                className="profile-menu-item"
-                onClick={() => showComingSoon("Downloads")}
-              >
+              <button className="profile-menu-item" onClick={() => showComingSoon("Downloads")}>
                 <span className="menu-icon">⬇</span>
                 <span className="menu-text">Downloads</span>
                 <ChevronIcon />
               </button>
-
-              <button
-                className="profile-menu-item"
-                onClick={() => showComingSoon("Notifications")}
-              >
+              <button className="profile-menu-item" onClick={() => showComingSoon("Notifications")}>
                 <span className="menu-icon">🔔</span>
                 <span className="menu-text">Notifications</span>
                 <span className="menu-badge">0</span>
                 <ChevronIcon />
               </button>
-
-              <button
-                className="profile-menu-item"
-                onClick={() => showComingSoon("Help & Feedback")}
-              >
+              <button className="profile-menu-item" onClick={() => showComingSoon("Help & Feedback")}>
                 <span className="menu-icon">❓</span>
                 <span className="menu-text">Help & Feedback</span>
                 <ChevronIcon />
               </button>
-
-              <button
-                className="profile-menu-item"
-                onClick={() => showComingSoon("About Thio")}
-              >
+              <button className="profile-menu-item" onClick={() => showComingSoon("About Revela")}>
                 <span className="menu-icon">ℹ</span>
-                <span className="menu-text">About Thio</span>
+                <span className="menu-text">About Revela</span>
                 <ChevronIcon />
               </button>
             </section>
@@ -892,9 +934,6 @@ if (selectedDrama) {
           </main>
         )}
 
-        {/* =========================
-            OTHER TABS
-        ========================= */}
         {activeNav === "For You" && (
           <div className="coming-page">
             <div className="coming-icon">▶</div>
@@ -919,9 +958,6 @@ if (selectedDrama) {
           </div>
         )}
 
-        {/* =========================
-            BOTTOM NAVIGATION
-        ========================= */}
         <nav className="bottom-navigation">
           <button
             className={`bottom-item ${activeNav === "Home" ? "active" : ""}`}
@@ -930,7 +966,6 @@ if (selectedDrama) {
             <HomeIcon />
             <span>Home</span>
           </button>
-
           <button
             className={`bottom-item ${activeNav === "For You" ? "active" : ""}`}
             onClick={() => setActiveNav("For You")}
@@ -938,7 +973,6 @@ if (selectedDrama) {
             <VideoIcon />
             <span>For You</span>
           </button>
-
           <button
             className={`bottom-item ${activeNav === "Member" ? "active" : ""}`}
             onClick={() => setActiveNav("Member")}
@@ -946,7 +980,6 @@ if (selectedDrama) {
             <MemberIcon />
             <span>Member</span>
           </button>
-
           <button
             className={`bottom-item ${activeNav === "My List" ? "active" : ""}`}
             onClick={() => setActiveNav("My List")}
@@ -954,31 +987,29 @@ if (selectedDrama) {
             <BookmarkIcon />
             <span>My List</span>
           </button>
-
           <button
             className={`bottom-item ${activeNav === "Profile" ? "active" : ""}`}
             onClick={goToProfile}
           >
             <div className="profile-icon-wrapper">
               <ProfileIcon />
-              <span className="notification-dot"></span>
+              <span className="notification-dot" />
             </div>
             <span>Profile</span>
           </button>
         </nav>
 
-        {/* =========================
-            LOGIN / REGISTER MODAL
-        ========================= */}
         {isAuthModalOpen && (
-          <div className="auth-modal-overlay">
+          <div
+            className="auth-modal-overlay"
+            onClick={(event) => {
+              if (event.target === event.currentTarget) setIsAuthModalOpen(false);
+            }}
+          >
             <div className="auth-modal-card">
               <div className="auth-modal-header">
                 <h2>{authMode === "login" ? "Sign In" : "Create Account"}</h2>
-                <button
-                  className="auth-close-btn"
-                  onClick={() => setIsAuthModalOpen(false)}
-                >
+                <button className="auth-close-btn" onClick={() => setIsAuthModalOpen(false)}>
                   ×
                 </button>
               </div>
@@ -991,7 +1022,7 @@ if (selectedDrama) {
                       type="text"
                       placeholder="Enter your name"
                       value={nameInput}
-                      onChange={(e) => setNameInput(e.target.value)}
+                      onChange={(event) => setNameInput(event.target.value)}
                     />
                   </div>
                 )}
@@ -1002,7 +1033,7 @@ if (selectedDrama) {
                     type="email"
                     placeholder="name@example.com"
                     value={emailInput}
-                    onChange={(e) => setEmailInput(e.target.value)}
+                    onChange={(event) => setEmailInput(event.target.value)}
                   />
                 </div>
 
@@ -1012,7 +1043,7 @@ if (selectedDrama) {
                     type="password"
                     placeholder="At least 6 characters"
                     value={passwordInput}
-                    onChange={(e) => setPasswordInput(e.target.value)}
+                    onChange={(event) => setPasswordInput(event.target.value)}
                   />
                 </div>
 
@@ -1025,19 +1056,36 @@ if (selectedDrama) {
                 {authMode === "login" ? (
                   <p>
                     Don't have an account?{" "}
-                    <span onClick={() => setAuthMode("register")}>Register</span>
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setAuthMode("register")}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") setAuthMode("register");
+                      }}
+                    >
+                      Register
+                    </span>
                   </p>
                 ) : (
                   <p>
                     Already have an account?{" "}
-                    <span onClick={() => setAuthMode("login")}>Sign In</span>
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setAuthMode("login")}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") setAuthMode("login");
+                      }}
+                    >
+                      Sign In
+                    </span>
                   </p>
                 )}
               </div>
             </div>
           </div>
         )}
-
       </div>
     </div>
   );
