@@ -537,8 +537,9 @@ function App() {
             }}
             className="video-element"
             onClick={() => {
-              // Close the episode menu as soon as the viewer taps the video.
+              // Close the episode menu and comments overlay when the viewer taps the video.
               setShowEpisodes(false);
+              setShowComments(false);
             }}
             onEnded={() => {
               if (selectedDrama.id === 1 && selectedEpisode === 1) {
