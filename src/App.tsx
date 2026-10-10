@@ -536,6 +536,10 @@ function App() {
               });
             }}
             className="video-element"
+            onClick={() => {
+              // Close the episode menu as soon as the viewer taps the video.
+              setShowEpisodes(false);
+            }}
             onEnded={() => {
               if (selectedDrama.id === 1 && selectedEpisode === 1) {
                 setUnlockedEpisode(2);
