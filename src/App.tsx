@@ -514,7 +514,23 @@ function App() {
           {selectedDrama.id === 1 ? `EP. ${selectedEpisode}` : selectedDrama.title}
         </h2>
 
-        <div className="video-frame">
+        <div
+          className="video-frame"
+          onClick={(event) => {
+            const target = event.target as HTMLElement;
+            // Keep clicks on interactive overlays working; clicks on the video area
+            // or empty frame close any open menus/panels.
+            if (
+              target.closest(
+                ".video-social-overlay, .episodes-menu-container, .video-comments-overlay, button, textarea, form"
+              )
+            ) {
+              return;
+            }
+            setShowEpisodes(false);
+            setShowComments(false);
+          }}
+        >
           <video
             key={`${selectedDrama.id}-${selectedEpisode}`}
             src={
@@ -536,11 +552,6 @@ function App() {
               });
             }}
             className="video-element"
-            onClick={() => {
-              // Close the episode menu and comments overlay when the viewer taps the video.
-              setShowEpisodes(false);
-              setShowComments(false);
-            }}
             onEnded={() => {
               if (selectedDrama.id === 1 && selectedEpisode === 1) {
                 setUnlockedEpisode(2);
