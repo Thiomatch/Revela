@@ -43,6 +43,7 @@ const SHADOWS_EPISODE_URLS: Record<number, string> = {
   3: "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/Episode%203.mp4",
   4: "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/Episode%204.mp4",
   5: "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/Episode%205.mp4",
+  6: "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/Episode%206.mp4",
 };
 
 const tabs = ["Popular", "New", "Rankings", "Categories", "Anime"];
