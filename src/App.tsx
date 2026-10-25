@@ -36,8 +36,14 @@ const dramas: Drama[] = [
   },
 ];
 
-const SHADOWS_EPISODE_2_URL =
-  "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/Episode%202.mp4";
+// Edit these URLs when you upload the remaining episodes.
+const SHADOWS_EPISODE_URLS: Record<number, string> = {
+  1: "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/Episode%201.mp4",
+  2: "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/Episode%202.mp4",
+  3: "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/Episode%203.mp4",
+  4: "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/Episode%204.mp4",
+  5: "https://ffsvbbmzwhwzzxpvcfrq.supabase.co/storage/v1/object/public/videos/Episode%205.mp4",
+};
 
 const tabs = ["Popular", "New", "Rankings", "Categories", "Anime"];
 
@@ -358,8 +364,8 @@ function App() {
 
   const handleShareVideo = async () => {
     const shareUrl = selectedDrama
-      ? selectedDrama.id === 1 && selectedEpisode === 2
-        ? SHADOWS_EPISODE_2_URL
+      ? selectedDrama.id === 1
+        ? SHADOWS_EPISODE_URLS[selectedEpisode] || selectedDrama.videoUrl || window.location.href
         : selectedDrama.videoUrl || window.location.href
       : window.location.href;
 
@@ -534,8 +540,8 @@ function App() {
           <video
             key={`${selectedDrama.id}-${selectedEpisode}`}
             src={
-              selectedDrama.id === 1 && selectedEpisode === 2
-                ? SHADOWS_EPISODE_2_URL
+              selectedDrama.id === 1
+                ? SHADOWS_EPISODE_URLS[selectedEpisode] || selectedDrama.videoUrl
                 : selectedDrama.videoUrl
             }
             poster={selectedDrama.image}
@@ -710,29 +716,32 @@ function App() {
                       >
                         E1
                       </button>
-                      <button
-                        type="button"
-                        aria-label="Play episode 2"
-                        title="Episode 2"
-                        onClick={() => {
-                          setSelectedEpisode(2);
-                          setShowEpisodes(false);
-                          setShowNextEpisodePrompt(false);
-                        }}
-                        style={{
-                          width: "72px",
-                          height: "72px",
-                          borderRadius: "50%",
-                          border: selectedEpisode === 2 ? "2px solid #fff" : "1.5px solid rgba(255,255,255,.55)",
-                          background: "rgba(0,0,0,.18)",
-                          color: "#fff",
-                          fontSize: "20px",
-                          fontWeight: 700,
-                          cursor: "pointer",
-                        }}
-                      >
-                        E2
-                      </button>
+                      {[2, 3, 4].map((episode) => (
+                        <button
+                          key={episode}
+                          type="button"
+                          aria-label={`Play episode ${episode}`}
+                          title={`Episode ${episode}`}
+                          onClick={() => {
+                            setSelectedEpisode(episode);
+                            setShowEpisodes(false);
+                            setShowNextEpisodePrompt(false);
+                          }}
+                          style={{
+                            width: "72px",
+                            height: "72px",
+                            borderRadius: "50%",
+                            border: selectedEpisode === episode ? "2px solid #fff" : "1.5px solid rgba(255,255,255,.55)",
+                            background: "rgba(0,0,0,.18)",
+                            color: "#fff",
+                            fontSize: "20px",
+                            fontWeight: 700,
+                            cursor: "pointer",
+                          }}
+                        >
+                          E{episode}
+                        </button>
+                      ))}
                     </div>
                   </>
                 ) : (
