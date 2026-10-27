@@ -59,3 +59,13 @@ button,
 input {
   font-family: inherit;
 }
+
+/* Slide-up animation for the DramaBox episode selection sheet */
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
