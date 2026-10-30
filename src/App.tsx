@@ -144,15 +144,43 @@ function App() {
   const [emailInput, setEmailInput] = useState("");
   const [passwordInput, setPasswordInput] = useState("");
   const [nameInput, setNameInput] = useState("");
-  const [selectedDrama, setSelectedDrama] = useState<Drama | null>(null);
+  
+  // Initialize selectedDrama directly from localStorage if available (defaulting to Shadows ID: 1)
+  const [selectedDrama, setSelectedDrama] = useState<Drama | null>(() => {
+    const savedAutoOpen = localStorage.getItem('revela_auto_open_drama');
+    if (savedAutoOpen === 'true') {
+      return dramas[0];
+    }
+    return null;
+  });
+
   const [showEpisodes, setShowEpisodes] = useState(false);
   const [activeModalTab, setActiveModalTab] = useState<"synopsis" | "episodes">("episodes");
   const [showNextEpisodePrompt, setShowNextEpisodePrompt] = useState(false);
-  const [selectedEpisode, setSelectedEpisode] = useState(1);
+  
+  // Initialize selectedEpisode from localStorage, or default to 1
+  const [selectedEpisode, setSelectedEpisode] = useState<number>(() => {
+    const savedEp = localStorage.getItem('revela_last_episode');
+    return savedEp ? parseInt(savedEp, 10) : 1;
+  });
+
   const [shadowsEpisodes, setShadowsEpisodes] = useState<Episode[]>([]);
   const [episodesLoading, setEpisodesLoading] = useState(true);
   const [episodesError, setEpisodesError] = useState("");
   const [, setUnlockedEpisode] = useState(1);
+
+  // Save current selected episode and active drama state to localStorage
+  useEffect(() => {
+    localStorage.setItem('revela_last_episode', selectedEpisode.toString());
+  }, [selectedEpisode]);
+
+  useEffect(() => {
+    if (selectedDrama) {
+      localStorage.setItem('revela_auto_open_drama', 'true');
+    } else {
+      localStorage.setItem('revela_auto_open_drama', 'false');
+    }
+  }, [selectedDrama]);
 
   const selectedEpisodeData = shadowsEpisodes.find(
     (episode) => episode.episode_number === selectedEpisode
@@ -190,11 +218,6 @@ function App() {
 
         setShadowsEpisodes(fullEpisodes);
         setEpisodesError("");
-        setSelectedEpisode((current) => {
-          return fullEpisodes.some((episode) => episode.episode_number === current)
-            ? current
-            : fullEpisodes[0]?.episode_number ?? 1;
-        });
       }
       setEpisodesLoading(false);
     };
@@ -553,7 +576,6 @@ function App() {
             setShowNextEpisodePrompt(false);
             setShowEpisodes(false);
             setShowComments(false);
-            setSelectedEpisode(1);
           }}
           style={{
             marginBottom: "4px",
@@ -1068,7 +1090,6 @@ function App() {
                     key={drama.id}
                     onClick={() => {
                       setSelectedDrama(drama);
-                      setSelectedEpisode(1);
                       setShowNextEpisodePrompt(false);
                       setShowEpisodes(false);
                       setShowComments(false);
