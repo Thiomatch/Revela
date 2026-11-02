@@ -333,7 +333,7 @@ export default function VideoSocialFeatures({ videoId, onOpenEpisodes, onRequire
               <form onSubmit={postComment} className="video-comment-form" style={{ marginTop: 'auto', borderTop: '1px solid #222', paddingTop: '10px' }}>
                 <textarea
                   value={commentText}
-                  onChange={(event) => setCommentTest(event.target.value)}
+                  onChange={(event) => setCommentText(event.target.value)}
                   placeholder="Write a comment..."
                   maxLength={1000}
                   rows={2}
