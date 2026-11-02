@@ -5,8 +5,9 @@ const config: CapacitorConfig = {
   appName: 'Revela',
   webDir: 'dist',
   server: {
-    url: 'https://revela-a7d4.vercel.app',
-    cleartext: true
+    url: 'https://revela-nine.vercel.app',
+    cleartext: true,
+    androidScheme: 'https'
   }
 };
 

@@ -15,12 +15,15 @@
     "@capacitor/android": "^8.5.2",
     "@capacitor/cli": "^8.5.2",
     "@capacitor/core": "^8.5.2",
+    "@onesignal/capacitor-plugin": "^1.2.2",
     "@supabase/supabase-js": "^2.117.2",
     "lucide-react": "^1.16.0",
+    "onesignal-cordova-plugin": "^5.6.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@capacitor/assets": "^4.0.0",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.1",

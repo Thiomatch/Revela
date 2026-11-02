@@ -1,247 +1,227 @@
-/* Social controls and a translucent comments panel over the video */
-
-.video-frame {
-  position: relative;
-  isolation: isolate;
-  width: 100%;
-}
-
-/* Keep the video at its normal size; overlays sit above it. */
-.video-frame .video-element {
-  display: block;
-  width: 100%;
-  height: auto;
-  position: relative;
-  z-index: 0;
-}
-
+/* Container for vertical social actions on the right side of the video */
 .video-social-overlay {
   position: absolute;
-  z-index: 20;
-  right: 12px;
-  top: 50%;
-  transform: translateY(-50%);
+  right: 16px;
+  bottom: 100px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: clamp(18px, 3.2vh, 30px);
-  pointer-events: none;
+  gap: 16px;
+  z-index: 10;
 }
 
+/* Individual action button (Like, Comments, Share, Episodes) */
 .video-overlay-action {
-  position: relative;
-  z-index: 21;
-  pointer-events: auto;
+  background: rgba(0, 0, 0, 0.4);
+  border: none;
+  border-radius: 50%;
+  width: 48px;
+  height: 48px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  padding: 3px;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  color: rgba(255, 255, 255, .96);
-  box-shadow: none;
+  color: #ffffff;
   cursor: pointer;
-  touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
-  transition: transform .16s ease, color .16s ease;
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.video-overlay-action:hover {
+  background: rgba(0, 0, 0, 0.6);
+  transform: scale(1.05);
 }
 
 .video-overlay-action svg {
-  display: block;
-  width: clamp(27px, 6vw, 38px);
-  height: clamp(27px, 6vw, 38px);
+  width: 22px;
+  height: 22px;
   fill: none;
   stroke: currentColor;
-  stroke-width: 1.55;
+  stroke-width: 2;
   stroke-linecap: round;
   stroke-linejoin: round;
-  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, .55));
-  pointer-events: none;
 }
 
-.video-overlay-action:hover { transform: scale(1.06); }
-.video-overlay-action:active { transform: scale(.94); }
-.video-overlay-action:focus-visible {
-  outline: 1px solid rgba(255,255,255,.9);
-  outline-offset: 4px;
+/* Active Liked State */
+.video-overlay-action.is-liked svg {
+  fill: #ff3b30;
+  stroke: #ff3b30;
 }
-.video-overlay-action.is-liked { color: #ff6b83; }
-.video-overlay-action.is-liked svg { fill: rgba(255, 107, 131, .18); }
-.video-overlay-action:disabled { opacity: .55; cursor: wait; }
 
 .video-overlay-count {
-  color: #fff;
-  font-size: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  margin-top: 2px;
   line-height: 1;
-  text-shadow: 0 1px 4px rgba(0, 0, 0, .8);
 }
 
-/*
- * App.tsx renders this panel only when showComments is true.
- * It is absolutely positioned inside .video-frame, so it does not
- * push the video down or resize the frame.
- */
+/* Comments Panel Overlay Modal */
+.video-comments-modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 1000;
+  background: transparent;
+}
+
 .video-social-panel.video-comments-overlay {
   position: absolute;
-  z-index: 40;
-  left: 10px;
-  right: 10px;
-  bottom: 10px;
-  width: auto;
-  max-width: none;
-  max-height: 62%;
-  margin: 0;
-  padding: 12px;
-  box-sizing: border-box;
-  overflow-x: hidden;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  color: #f7f7f7;
-  background: rgba(8, 8, 8, .62);
-  border: 1px solid rgba(255, 255, 255, .2);
-  border-radius: 14px;
-  box-shadow: 0 6px 24px rgba(0, 0, 0, .18);
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
-  pointer-events: auto;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255,255,255,.35) transparent;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  max-height: 70vh;
+  background: #1c1c1e;
+  border-top-left-radius: 20px;
+  border-top-right-radius: 20px;
+  box-shadow: 0 -5px 25px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  z-index: 1001;
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
 }
 
 .video-comments {
-  padding-top: 0;
-  scroll-margin-top: 24px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  box-sizing: border-box;
+  color: #ffffff;
 }
 
 .video-comments h3 {
-  margin: 0 0 12px;
-  font-size: 20px;
-  font-weight: 700;
-  text-shadow: 0 1px 3px rgba(0,0,0,.45);
+  font-size: 16px;
+  margin-bottom: 12px;
+  font-weight: 600;
 }
 
 .video-comments h3 span {
-  color: #ddd;
-  font-size: 15px;
-  font-weight: 500;
-}
-
-.video-comment-form {
-  padding: 10px;
-  border: 1px solid rgba(255,255,255,.2);
-  border-radius: 12px;
-  background: rgba(0,0,0,.35);
-}
-
-.video-comment-form textarea {
-  display: block;
-  box-sizing: border-box;
-  width: 100%;
-  min-height: 64px;
-  max-height: 120px;
-  resize: vertical;
-  padding: 10px 12px;
-  border: 1px solid rgba(255,255,255,.24);
-  border-radius: 9px;
-  outline: none;
-  background: rgba(0,0,0,.48);
-  color: #fff;
-  font: inherit;
-}
-
-.video-comment-form textarea:focus { border-color: #e50914; }
-.video-comment-form textarea::placeholder { color: #ddd; }
-
-.comment-form-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-top: 9px;
-  color: #ddd;
-  font-size: 12px;
-}
-
-.comment-form-footer button {
-  padding: 9px 14px;
-  border: 0;
-  border-radius: 9px;
-  background: #e50914;
-  color: #fff;
-  font-weight: 700;
-  cursor: pointer;
-  touch-action: manipulation;
-}
-
-.comment-form-footer button:disabled { opacity: .5; cursor: not-allowed; }
-
-.video-comment-list {
-  display: grid;
-  gap: 14px;
-  margin-top: 16px;
-}
-
-.video-comment { display: flex; gap: 10px; align-items: flex-start; }
-
-.comment-avatar {
-  display: grid;
-  flex: 0 0 34px;
-  width: 34px;
-  height: 34px;
-  place-items: center;
-  border-radius: 50%;
-  background: rgba(41,41,41,.9);
-  color: #fff;
-  font-weight: 700;
-}
-
-.comment-content { flex: 1; min-width: 0; }
-
-.comment-meta {
-  display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.comment-meta strong { font-size: 13px; }
-.comment-meta time { color: #ddd; font-size: 10px; }
-
-.comment-content p {
-  margin: 5px 0 0;
-  color: #f2f2f2;
-  font-size: 13px;
-  line-height: 1.45;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
+  color: #8e8e93;
+  font-weight: normal;
 }
 
 .comments-empty {
-  color: #eee;
-  font-size: 13px;
-  padding: 8px 0;
-  margin: 0;
+  color: #8e8e93;
+  text-align: center;
+  padding: 24px 0;
+  font-size: 14px;
 }
 
-@media (max-width: 600px) {
-  .video-social-overlay { right: 8px; gap: 22px; }
-  .video-overlay-action svg { width: 31px; height: 31px; }
-  .video-overlay-count { font-size: 11px; }
+.video-comment-list {
+  overflow-y: auto;
+  flex-grow: 1;
+  max-height: 35vh;
+  margin-bottom: 12px;
+  padding-right: 4px;
+}
 
-  .video-social-panel.video-comments-overlay {
-    left: 6px;
-    right: 6px;
-    bottom: 6px;
-    max-height: 64%;
-    padding: 9px;
-    border-radius: 12px;
-  }
+.video-comment {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 14px;
+  align-items: flex-start;
+}
 
-  .video-comments h3 { font-size: 17px; margin-bottom: 9px; }
-  .video-comment-form { padding: 8px; }
-  .video-comment-form textarea { min-height: 54px; padding: 9px; }
-  .comment-form-footer button { padding: 9px 11px; }
+.comment-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #3a3a3c;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 14px;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.comment-content {
+  flex-grow: 1;
+  background: #2a2a2c;
+  padding: 10px 12px;
+  border-radius: 12px;
+}
+
+.comment-meta {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 4px;
+  font-size: 12px;
+}
+
+.comment-meta strong {
+  color: #ffffff;
+}
+
+.comment-meta time {
+  color: #8e8e93;
+}
+
+.comment-content p {
+  margin: 0;
+  font-size: 13px;
+  color: #f2f2f7;
+  word-break: break-word;
+}
+
+.video-comment-form {
+  display: flex;
+  flex-direction: column;
+  background: #2a2a2c;
+  border-radius: 12px;
+  padding: 8px;
+  border: 1px solid #3a3a3c;
+}
+
+.video-comment-form textarea {
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  font-size: 14px;
+  resize: none;
+  outline: none;
+  padding: 4px;
+  font-family: inherit;
+}
+
+.comment-form-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid #3a3a3c;
+}
+
+.comment-form-footer span {
+  font-size: 11px;
+  color: #8e8e93;
+}
+
+.comment-form-footer button {
+  background: #ff3b30;
+  color: #ffffff;
+  border: none;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.comment-form-footer button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
