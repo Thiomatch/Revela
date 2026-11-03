@@ -54,7 +54,7 @@
   line-height: 1;
 }
 
-/* Comments Panel Overlay Modal */
+/* Comments Panel Overlay Modal with Translucent Backdrop */
 .video-comments-modal-backdrop {
   position: fixed;
   top: 0;
@@ -62,7 +62,9 @@
   width: 100vw;
   height: 100vh;
   z-index: 1000;
-  background: transparent;
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
 }
 
 .video-social-panel.video-comments-overlay {
@@ -71,7 +73,10 @@
   left: 0;
   width: 100%;
   max-height: 70vh;
-  background: #1c1c1e;
+  background: rgba(28, 28, 30, 0.75); /* Translucent dark tint */
+  backdrop-filter: blur(16px);        /* Frosted glass blur effect */
+  -webkit-backdrop-filter: blur(16px);
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
   border-top-left-radius: 20px;
   border-top-right-radius: 20px;
   box-shadow: 0 -5px 25px rgba(0, 0, 0, 0.5);
@@ -136,7 +141,7 @@
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: #3a3a3c;
+  background: rgba(58, 58, 60, 0.8);
   color: #ffffff;
   display: flex;
   align-items: center;
@@ -149,9 +154,12 @@
 
 .comment-content {
   flex-grow: 1;
-  background: #2a2a2c;
+  background: rgba(42, 42, 44, 0.65); /* Translucent bubble */
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   padding: 10px 12px;
   border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .comment-meta {
@@ -179,10 +187,12 @@
 .video-comment-form {
   display: flex;
   flex-direction: column;
-  background: #2a2a2c;
+  background: rgba(42, 42, 44, 0.65); /* Translucent input container */
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border-radius: 12px;
   padding: 8px;
-  border: 1px solid #3a3a3c;
+  border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .video-comment-form textarea {
@@ -202,7 +212,7 @@
   align-items: center;
   margin-top: 6px;
   padding-top: 6px;
-  border-top: 1px solid #3a3a3c;
+  border-top: 1px solid rgba(58, 58, 60, 0.8);
 }
 
 .comment-form-footer span {
