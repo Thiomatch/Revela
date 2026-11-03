@@ -10,7 +10,7 @@ export const App = () => {
   const [showEpisodeModal, setShowEpisodeModal] = useState(false);
   const [activeTab, setActiveTab] = useState<'synopsis' | 'episodes'>('episodes');
 
-  // Registration Gate States
+  // Registration Gate States (kept for general social interactions if needed)
   const [showRegModal, setShowRegModal] = useState(false);
   const [pendingAction, setPendingAction] = useState<{ type: string; payload?: any } | null>(null);
 
@@ -50,15 +50,8 @@ export const App = () => {
 
   const handleSelectEpisode = (epInput: number | string) => {
     const epNumber = Number(epInput);
-    const registered = isRegistered();
 
-    if (epNumber >= 3 && !registered) {
-      setPendingAction({ type: 'PLAY_EPISODE', payload: epNumber });
-      setShowRegModal(true);
-      setShowEpisodeModal(false);
-      return;
-    }
-
+    // Direct access granted to all episodes without locking/registration requirement
     setCurrentEpisode(epNumber);
     setShowEpisodeModal(false);
   };
@@ -70,17 +63,11 @@ export const App = () => {
 
   const handleRegistrationSuccess = () => {
     setShowRegModal(false);
-
-    if (pendingAction?.type === 'PLAY_EPISODE' && pendingAction.payload) {
-      setCurrentEpisode(pendingAction.payload);
-    }
-
     setPendingAction(null);
   };
 
-  // Generate a list of episodes (supports dynamic database items or fallback to 30 grid slots)
-  const totalEpisodeSlots = episodes.length > 0 ? Math.max(30, episodes.length) : 30;
-  const episodeListArray = Array.from({ length: totalEpisodeSlots }, (_, i) => i + 1);
+  // Sort episodes by episode_number to keep them properly ordered
+  const sortedEpisodes = [...episodes].sort((a, b) => a.episode_number - b.episode_number);
 
   return (
     <div style={{ backgroundColor: '#000', color: '#fff', height: '100vh', width: '100vw', margin: 0, padding: 0, overflow: 'hidden', position: 'relative', fontFamily: 'sans-serif' }}>
@@ -218,19 +205,21 @@ export const App = () => {
               <div>
                 {/* Range Selector Subtitle */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                  <span style={{ fontSize: '13px', color: '#8e8e93', fontWeight: '600' }}>1-30</span>
+                  <span style={{ fontSize: '13px', color: '#8e8e93', fontWeight: '600' }}>
+                    Episodes ({sortedEpisodes.length})
+                  </span>
                 </div>
 
-                {/* Numbered Episode Grid */}
+                {/* Numbered Episode Grid (Mapped directly to Supabase rows with locks removed) */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '8px' }}>
-                  {episodeListArray.map((ep) => {
-                    const isSelected = currentEpisode === ep;
-                    const isLocked = ep >= 3;
+                  {sortedEpisodes.map((ep) => {
+                    const epNum = ep.episode_number;
+                    const isSelected = currentEpisode === epNum;
 
                     return (
                       <button
-                        key={ep}
-                        onClick={() => handleSelectEpisode(ep)}
+                        key={ep.id || epNum}
+                        onClick={() => handleSelectEpisode(epNum)}
                         style={{
                           aspectRatio: '1',
                           backgroundColor: isSelected ? '#707075' : '#262629',
@@ -248,23 +237,7 @@ export const App = () => {
                           transition: 'transform 0.1s ease'
                         }}
                       >
-                        {/* Lock Icon for restricted episodes */}
-                        {isLocked && (
-                          <svg 
-                            viewBox="0 0 24 24" 
-                            style={{ 
-                              position: 'absolute', 
-                              top: '4px', 
-                              right: '4px', 
-                              width: '10px', 
-                              height: '10px', 
-                              fill: '#8e8e93' 
-                            }}
-                          >
-                            <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0-2-.9-2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>
-                          </svg>
-                        )}
-                        <span>{ep}</span>
+                        <span>{epNum}</span>
                       </button>
                     );
                   })}
