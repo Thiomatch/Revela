@@ -10,13 +10,8 @@ export const App = () => {
   const [showEpisodeModal, setShowEpisodeModal] = useState(false);
   const [activeTab, setActiveTab] = useState<'synopsis' | 'episodes'>('episodes');
 
-  // Registration Gate States (kept for general social interactions if needed)
+  // Registration Gate States
   const [showRegModal, setShowRegModal] = useState(false);
-  const [pendingAction, setPendingAction] = useState<{ type: string; payload?: any } | null>(null);
-
-  const isRegistered = () => {
-    return !!localStorage.getItem('revela_registered_user');
-  };
 
   useEffect(() => {
     // Initialize OneSignal Push Notifications
@@ -50,20 +45,16 @@ export const App = () => {
 
   const handleSelectEpisode = (epInput: number | string) => {
     const epNumber = Number(epInput);
-
-    // Direct access granted to all episodes without locking/registration requirement
     setCurrentEpisode(epNumber);
     setShowEpisodeModal(false);
   };
 
-  const handleRequireRegistration = (actionType: string = 'INTERACT') => {
-    setPendingAction({ type: actionType });
+  const handleRequireRegistration = () => {
     setShowRegModal(true);
   };
 
   const handleRegistrationSuccess = () => {
     setShowRegModal(false);
-    setPendingAction(null);
   };
 
   // Sort episodes by episode_number to keep them properly ordered
@@ -210,7 +201,7 @@ export const App = () => {
                   </span>
                 </div>
 
-                {/* Numbered Episode Grid (Mapped directly to Supabase rows with locks removed) */}
+                {/* Numbered Episode Grid */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '8px' }}>
                   {sortedEpisodes.map((ep) => {
                     const epNum = ep.episode_number;
