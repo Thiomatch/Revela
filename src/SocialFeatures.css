@@ -54,7 +54,7 @@
   line-height: 1;
 }
 
-/* Comments Panel Overlay Modal with Translucent Backdrop */
+/* Comments Panel Overlay Modal */
 .video-comments-modal-backdrop {
   position: fixed;
   top: 0;
@@ -62,7 +62,7 @@
   width: 100vw;
   height: 100vh;
   z-index: 1000;
-  background: rgba(0, 0, 0, 0.35);
+  background: rgba(0, 0, 0, 0.4);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
 }
@@ -73,9 +73,10 @@
   left: 0;
   width: 100%;
   max-height: 70vh;
-  background: rgba(28, 28, 30, 0.75); /* Translucent dark tint */
-  backdrop-filter: blur(16px);        /* Frosted glass blur effect */
-  -webkit-backdrop-filter: blur(16px);
+  /* Fixed: Changed solid #1c1c1e to translucent glass tint */
+  background: rgba(28, 28, 30, 0.65) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
   border-top: 1px solid rgba(255, 255, 255, 0.15);
   border-top-left-radius: 20px;
   border-top-right-radius: 20px;
@@ -154,7 +155,8 @@
 
 .comment-content {
   flex-grow: 1;
-  background: rgba(42, 42, 44, 0.65); /* Translucent bubble */
+  /* Fixed: Changed solid #2a2a2c to translucent glass tint */
+  background: rgba(42, 42, 44, 0.55) !important;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   padding: 10px 12px;
@@ -187,7 +189,8 @@
 .video-comment-form {
   display: flex;
   flex-direction: column;
-  background: rgba(42, 42, 44, 0.65); /* Translucent input container */
+  /* Fixed: Changed solid #2a2a2c to translucent glass tint */
+  background: rgba(42, 42, 44, 0.6) !important;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   border-radius: 12px;
