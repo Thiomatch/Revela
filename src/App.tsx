@@ -13,6 +13,9 @@ export const App = () => {
   // Registration Gate States
   const [showRegModal, setShowRegModal] = useState(false);
 
+  // Get the movie poster public URL from Supabase storage
+  const posterUrl = supabase.storage.from('videos').getPublicUrl('image.Shadows.S1.png').data.publicUrl;
+
   useEffect(() => {
     // Initialize OneSignal Push Notifications
     const initOneSignal = async () => {
@@ -138,7 +141,7 @@ export const App = () => {
             <div style={{ display: 'flex', gap: '14px', alignItems: 'center', marginBottom: '20px' }}>
               <div style={{ width: '64px', height: '84px', background: '#2c2c2e', borderRadius: '8px', overflow: 'hidden', flexShrink: '0' }}>
                 <img 
-                  src="https://images.unsplash.com/photo-1536440136628-849c177e76a1?auto=format&fit=crop&w=300&q=80" 
+                  src={posterUrl} 
                   alt="Series Thumbnail" 
                   style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                 />
