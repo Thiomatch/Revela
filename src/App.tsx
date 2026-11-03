@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react'; 
 import OneSignal from '@onesignal/capacitor-plugin';
 import { supabase } from './supabaseClient';
 import { RegistrationModal } from './RegistrationModal';
