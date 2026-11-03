@@ -166,7 +166,6 @@ export default function VideoSocialFeatures({ videoId, onOpenEpisodes, onRequire
         throw error;
       }
 
-      console.log("Comment posted successfully:", data);
       setCommentText("");
       await loadSocialData(false);
     } catch (error) {
@@ -248,7 +247,7 @@ export default function VideoSocialFeatures({ videoId, onOpenEpisodes, onRequire
         </button>
       </div>
 
-      {/* Translucent Comments Panel Overlay with Tap-Outside-to-Close */}
+      {/* Translucent Comments Panel Overlay with Glassmorphism */}
       {showCommentsOverlay && (
         <div 
           className="video-comments-modal-backdrop"
@@ -256,11 +255,12 @@ export default function VideoSocialFeatures({ videoId, onOpenEpisodes, onRequire
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(0,0,0,0.75)',
-            zIndex: 1000,
+            background: 'rgba(0,0,0,0.6)', // Lighter backdrop dim
+            zIndex: 9999,
             display: 'flex',
             flexDirection: 'column',
-            justifyContent: 'flex-end'
+            justifyContent: 'flex-end',
+            backdropFilter: 'blur(4px)'
           }}
         >
           <div 
@@ -268,28 +268,34 @@ export default function VideoSocialFeatures({ videoId, onOpenEpisodes, onRequire
             id="video-comments"
             onClick={(e) => e.stopPropagation()}
             style={{
-              background: '#121212',
+              background: 'rgba(18, 18, 18, 0.82)', // Translucent dark glass background
+              backdropFilter: 'blur(16px)',          // Frosted glass blur effect
+              WebkitBackdropFilter: 'blur(16px)',
+              borderTop: '1px solid rgba(255, 255, 255, 0.15)', // Subtle glowing top border
               width: '100%',
               maxHeight: '75vh',
               height: '75vh',
-              borderTopLeftRadius: '20px',
-              borderTopRightRadius: '20px',
+              borderTopLeftRadius: '24px',
+              borderTopRightRadius: '24px',
               display: 'flex',
               flexDirection: 'column',
-              boxShadow: '0 -10px 25px rgba(0,0,0,0.5)',
+              boxShadow: '0 -10px 30px rgba(0,0,0,0.6)',
               overflow: 'hidden'
             }}
           >
             <div className="video-comments" style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: '16px', boxSizing: 'border-box' }}>
               
+              {/* Drag Handle Indicator */}
+              <div style={{ width: '40px', height: '4px', background: 'rgba(255,255,255,0.3)', borderRadius: '2px', margin: '0 auto 12px auto', flexShrink: 0 }} />
+
               {/* Header */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                <h3 style={{ margin: 0, color: '#fff', fontSize: '16px' }}>
-                  Comments <span>({comments.length})</span>
+                <h3 style={{ margin: 0, color: '#fff', fontSize: '16px', fontWeight: '600' }}>
+                  Comments <span style={{ color: '#aaa', fontWeight: 'normal' }}>({comments.length})</span>
                 </h3>
                 <button 
                   onClick={() => setShowCommentsOverlay(false)}
-                  style={{ background: 'transparent', border: 'none', color: '#aaa', fontSize: '18px', cursor: 'pointer' }}
+                  style={{ background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '50%', width: '28px', height: '28px', color: '#fff', fontSize: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                 >
                   ✕
                 </button>
@@ -330,7 +336,7 @@ export default function VideoSocialFeatures({ videoId, onOpenEpisodes, onRequire
               )}
 
               {/* Typing Box Anchored at the Bottom */}
-              <form onSubmit={postComment} className="video-comment-form" style={{ marginTop: 'auto', borderTop: '1px solid #222', paddingTop: '10px' }}>
+              <form onSubmit={postComment} className="video-comment-form" style={{ marginTop: 'auto', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '10px' }}>
                 <textarea
                   value={commentText}
                   onChange={(event) => setCommentText(event.target.value)}
@@ -338,15 +344,15 @@ export default function VideoSocialFeatures({ videoId, onOpenEpisodes, onRequire
                   maxLength={1000}
                   rows={2}
                   aria-label="Write a comment"
-                  style={{ width: '100%', background: '#1e1e1e', border: '1px solid #333', borderRadius: '8px', padding: '10px', color: '#fff', resize: 'none', outline: 'none', boxSizing: 'border-box' }}
+                  style={{ width: '100%', background: 'rgba(0, 0, 0, 0.3)', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '12px', padding: '10px', color: '#fff', resize: 'none', outline: 'none', boxSizing: 'border-box' }}
                 />
 
                 <div className="comment-form-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
-                  <span style={{ fontSize: '11px', color: '#777' }}>{commentText.length}/1000</span>
+                  <span style={{ fontSize: '11px', color: '#888' }}>{commentText.length}/1000</span>
                   <button
                     type="submit"
                     disabled={posting || !commentText.trim()}
-                    style={{ background: posting || !commentText.trim() ? '#444' : '#e50914', color: '#fff', border: 'none', borderRadius: '6px', padding: '6px 14px', fontSize: '12px', fontWeight: 'bold', cursor: posting || !commentText.trim() ? 'not-allowed' : 'pointer' }}
+                    style={{ background: posting || !commentText.trim() ? '#444' : '#e50914', color: '#fff', border: 'none', borderRadius: '8px', padding: '6px 14px', fontSize: '12px', fontWeight: 'bold', cursor: posting || !commentText.trim() ? 'not-allowed' : 'pointer' }}
                   >
                     {posting ? "Posting..." : "Post comment"}
                   </button>
