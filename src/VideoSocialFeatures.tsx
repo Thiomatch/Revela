@@ -158,7 +158,8 @@ export default function VideoSocialFeatures({ videoId, onOpenEpisodes, onRequire
         content: contentText,
       };
 
-      const { data, error } = await supabase.from("video_comments").insert(payload).select();
+      // Fixed: Removed unused 'data' declaration to satisfy TypeScript strict checking
+      const { error } = await supabase.from("video_comments").insert(payload);
 
       if (error) {
         console.error("Supabase comment insert error details:", error);
@@ -255,7 +256,7 @@ export default function VideoSocialFeatures({ videoId, onOpenEpisodes, onRequire
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(0,0,0,0.6)', // Lighter backdrop dim
+            background: 'rgba(0,0,0,0.6)',
             zIndex: 9999,
             display: 'flex',
             flexDirection: 'column',
@@ -268,10 +269,10 @@ export default function VideoSocialFeatures({ videoId, onOpenEpisodes, onRequire
             id="video-comments"
             onClick={(e) => e.stopPropagation()}
             style={{
-              background: 'rgba(18, 18, 18, 0.82)', // Translucent dark glass background
-              backdropFilter: 'blur(16px)',          // Frosted glass blur effect
+              background: 'rgba(18, 18, 18, 0.82)',
+              backdropFilter: 'blur(16px)',
               WebkitBackdropFilter: 'blur(16px)',
-              borderTop: '1px solid rgba(255, 255, 255, 0.15)', // Subtle glowing top border
+              borderTop: '1px solid rgba(255, 255, 255, 0.15)',
               width: '100%',
               maxHeight: '75vh',
               height: '75vh',
