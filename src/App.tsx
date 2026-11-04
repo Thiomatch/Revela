@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'; 
+import { useState, useEffect } from 'react';  
 import OneSignal from '@onesignal/capacitor-plugin';
 import { supabase } from './supabaseClient';
 import { RegistrationModal } from './RegistrationModal';
@@ -9,6 +9,10 @@ export const App = () => {
   const [currentEpisode, setCurrentEpisode] = useState<number>(1);
   const [showEpisodeModal, setShowEpisodeModal] = useState(false);
   const [activeTab, setActiveTab] = useState<'synopsis' | 'episodes'>('episodes');
+
+  // Transition States for Bottom Slide on Video End
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [nextEpisodeData, setNextEpisodeData] = useState<any>(null);
 
   // Registration Gate States
   const [showRegModal, setShowRegModal] = useState(false);
@@ -52,6 +56,26 @@ export const App = () => {
     setShowEpisodeModal(false);
   };
 
+  // Triggered the exact moment the video finishes or reaches the end
+  const handleVideoEnded = () => {
+    if (isTransitioning) return; // Prevent duplicate triggers
+
+    const nextEpNum = currentEpisode + 1;
+    const foundNextEp = episodes.find((ep) => ep.episode_number === nextEpNum);
+
+    if (foundNextEp) {
+      setNextEpisodeData(foundNextEp);
+      setIsTransitioning(true);
+
+      // Match this timeout duration with your CSS transition (0.4s)
+      setTimeout(() => {
+        setCurrentEpisode(nextEpNum);
+        setIsTransitioning(false);
+        setNextEpisodeData(null);
+      }, 400);
+    }
+  };
+
   const handleRequireRegistration = () => {
     setShowRegModal(true);
   };
@@ -63,23 +87,35 @@ export const App = () => {
   // Sort episodes by episode_number to keep them properly ordered
   const sortedEpisodes = [...episodes].sort((a, b) => a.episode_number - b.episode_number);
 
+  const displayEpisode = isTransitioning && nextEpisodeData ? nextEpisodeData : activeEpisodeData;
+
   return (
     <div style={{ backgroundColor: '#000', color: '#fff', height: '100vh', width: '100vw', margin: 0, padding: 0, overflow: 'hidden', position: 'relative', fontFamily: 'sans-serif' }}>
       
-      {/* Fullscreen Video Frame Container */}
-      <div className="video-frame" style={{ width: '100%', height: '100%', position: 'relative', background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <video
-          key={activeEpisodeData?.video_url || currentEpisode}
-          className="video-element"
-          controls
-          autoPlay
-          playsInline
-          preload="auto"
-          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-        >
-          <source src={activeEpisodeData?.video_url || ''} type="video/mp4" />
-          Your browser does not support the video tag.
-        </video>
+      {/* Fullscreen Video Frame Container with Slide Transition Wrapper */}
+      <div className="video-frame video-transition-container" style={{ width: '100%', height: '100%', position: 'relative', background: '#000', overflow: 'hidden' }}>
+        <div className={`episode-slide-wrapper ${isTransitioning ? 'slide-enter-active' : 'slide-enter'}`} style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}>
+          <video
+            key={displayEpisode?.id || displayEpisode?.episode_number || currentEpisode}
+            className="video-element"
+            controls
+            autoPlay
+            playsInline
+            preload="auto"
+            onEnded={handleVideoEnded}
+            onTimeUpdate={(e) => {
+              const video = e.currentTarget;
+              // Fallback for mobile WebViews where 'onEnded' can be skipped
+              if (video.duration && video.currentTime >= video.duration - 0.4 && !isTransitioning) {
+                handleVideoEnded();
+              }
+            }}
+            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+          >
+            <source src={displayEpisode?.video_url || ''} type="video/mp4" />
+            Your browser does not support the video tag.
+          </video>
+        </div>
 
         {/* Bottom-Left Movie Title & Synopsis Overlay */}
         <div style={{
@@ -92,7 +128,7 @@ export const App = () => {
           textShadow: '0 1px 4px rgba(0,0,0,0.8)'
         }}>
           <h2 style={{ margin: '0 0 4px 0', fontSize: '18px', fontWeight: 700, color: '#fff' }}>
-            Shadows: Deep waters — Ep. {currentEpisode}
+            Shadows: Deep waters — Ep. {displayEpisode?.episode_number || currentEpisode}
           </h2>
           <p style={{ margin: 0, fontSize: '12px', color: '#e0e0e0', lineHeight: 1.3 }}>
             Dark secrets emerge as strange tides sweep across the quiet coastal village.

@@ -16,7 +16,7 @@ type Props = {
   onRequireRegistration?: (actionType?: string) => void;
 };
 
-export default function VideoSocialFeatures({ videoId, onOpenEpisodes, onRequireRegistration }: Props) {
+export default function VideoSocialFeatures({ videoId, onOpenEpisodes }: Props) {
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
   const [comments, setComments] = useState<Comment[]>([]);
@@ -28,16 +28,15 @@ export default function VideoSocialFeatures({ videoId, onOpenEpisodes, onRequire
   const episodeNum = Number(videoId);
   const videoKey = `shadows-episode-${episodeNum}`;
 
-  const getRegisteredUser = () => {
-    try {
-      const data = localStorage.getItem("revela_registered_user");
-      return data ? JSON.parse(data) : null;
-    } catch {
-      return null;
+  // Helper to get or create a persistent local user identifier
+  const getLocalUserId = () => {
+    let localUserId = localStorage.getItem("revela_user_id");
+    if (!localUserId) {
+      localUserId = crypto.randomUUID();
+      localStorage.setItem("revela_user_id", localUserId);
     }
+    return localUserId;
   };
-
-  const currentUser = getRegisteredUser();
 
   const loadSocialData = useCallback(async (isInitial = false) => {
     if (isInitial) {
@@ -65,8 +64,10 @@ export default function VideoSocialFeatures({ videoId, onOpenEpisodes, onRequire
       console.error("Failed to load comments:", err);
     }
 
-    // 2. Fetch Likes
+    // 2. Fetch Likes & User Like Status
     try {
+      const localUserId = getLocalUserId();
+
       const { count, error: likesError } = await supabase
         .from("video_likes")
         .select("*", { count: "exact", head: true })
@@ -76,15 +77,14 @@ export default function VideoSocialFeatures({ videoId, onOpenEpisodes, onRequire
         setLikeCount(count ?? 0);
       }
 
-      if (currentUser && currentUser.Email) {
-        const { data: myLike } = await supabase
-          .from("video_likes")
-          .select("id")
-          .eq("video_id", videoKey)
-          .maybeSingle();
+      const { data: myLike } = await supabase
+        .from("video_likes")
+        .select("id")
+        .eq("video_id", videoKey)
+        .eq("user_id", localUserId)
+        .maybeSingle();
 
-        setLiked(Boolean(myLike));
-      }
+      setLiked(Boolean(myLike));
     } catch (err) {
       console.warn("Likes loading skipped or failed:", err);
     } finally {
@@ -92,33 +92,36 @@ export default function VideoSocialFeatures({ videoId, onOpenEpisodes, onRequire
         setLoading(false);
       }
     }
-  }, [videoKey, videoId, currentUser]);
+  }, [videoKey, videoId]);
 
   useEffect(() => {
     void loadSocialData(true);
   }, [loadSocialData]);
 
   const toggleLike = async () => {
+    const localUserId = getLocalUserId();
+
     try {
       if (liked) {
+        setLiked(false);
+        setLikeCount((count) => Math.max(0, count - 1));
+
         const { error } = await supabase
           .from("video_likes")
           .delete()
-          .eq("video_id", videoKey);
+          .eq("video_id", videoKey)
+          .eq("user_id", localUserId);
 
         if (error) throw error;
-
-        setLiked(false);
-        setLikeCount((count) => Math.max(0, count - 1));
       } else {
-        const { error } = await supabase
-          .from("video_likes")
-          .insert({ video_id: videoKey });
-
-        if (error) throw error;
-
         setLiked(true);
         setLikeCount((count) => count + 1);
+
+        const { error } = await supabase
+          .from("video_likes")
+          .insert({ video_id: videoKey, user_id: localUserId });
+
+        if (error) throw error;
       }
     } catch (error) {
       console.error("Could not update like:", error);
@@ -136,29 +139,19 @@ export default function VideoSocialFeatures({ videoId, onOpenEpisodes, onRequire
     const contentText = commentText.trim();
     if (!contentText) return;
 
-    if (!currentUser) {
-      if (onRequireRegistration) onRequireRegistration("COMMENT");
-      return;
-    }
-
     setPosting(true);
 
     try {
-      let localUserId = localStorage.getItem("revela_user_id");
-      if (!localUserId) {
-        localUserId = crypto.randomUUID();
-        localStorage.setItem("revela_user_id", localUserId);
-      }
+      const localUserId = getLocalUserId();
 
       const payload: any = {
         video_id: videoKey,
         user_id: localUserId,
-        user_name: currentUser.Name || "Viewer",
-        user_avatar: currentUser.Avatar || "",
+        user_name: "Viewer", // Free public username
+        user_avatar: "",
         content: contentText,
       };
 
-      // Fixed: Removed unused 'data' declaration to satisfy TypeScript strict checking
       const { error } = await supabase.from("video_comments").insert(payload);
 
       if (error) {
@@ -341,7 +334,7 @@ export default function VideoSocialFeatures({ videoId, onOpenEpisodes, onRequire
                 <textarea
                   value={commentText}
                   onChange={(event) => setCommentText(event.target.value)}
-                  placeholder="Write a comment..."
+                  placeholder="Write a comment as Viewer..."
                   maxLength={1000}
                   rows={2}
                   aria-label="Write a comment"

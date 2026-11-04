@@ -842,3 +842,40 @@ body {
   flex-shrink: 0;
   color: #e50914;
 }
+
+/* =========================
+   EPISODE SLIDE-IN TRANSITION
+========================= */
+.video-transition-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.episode-slide-wrapper {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  transform: translateY(100%);
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.episode-slide-wrapper.slide-enter {
+  transform: translateY(100%);
+}
+
+.episode-slide-wrapper.slide-enter-active {
+  transform: translateY(0);
+}
+
+.episode-slide-wrapper.slide-exit {
+  transform: translateY(0);
+}
+
+.episode-slide-wrapper.slide-exit-active {
+  transform: translateY(-100%);
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
