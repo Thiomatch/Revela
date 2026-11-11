@@ -166,7 +166,7 @@ export const App = () => {
             </div>
           </div>
         ) : (
-          /* Video Player mounts fresh and autoplays immediately upon click */
+          /* Video Player mounts fresh and displays poster while loading */
           <div className={`episode-slide-wrapper ${isTransitioning ? 'slide-enter-active' : 'slide-enter'}`} style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}>
             <video
               ref={videoRef}
@@ -176,6 +176,7 @@ export const App = () => {
               autoPlay
               playsInline
               preload="auto"
+              poster={posterUrl}
               onEnded={handleVideoEnded}
               onCanPlay={handleVideoCanPlay}
               onTimeUpdate={(e) => {
