@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';  
+import { useState, useEffect, useRef, type SyntheticEvent } from 'react';  
 import OneSignal from '@onesignal/capacitor-plugin';
 import { supabase } from './supabaseClient';
 import { RegistrationModal } from './RegistrationModal';
@@ -6,6 +6,7 @@ import VideoSocialFeatures from './VideoSocialFeatures';
 
 export const App = () => {
   const [episodes, setEpisodes] = useState<any[]>([]);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
   const [currentEpisode, setCurrentEpisode] = useState<number>(1);
   const [showEpisodeModal, setShowEpisodeModal] = useState(false);
   const [activeTab, setActiveTab] = useState<'synopsis' | 'episodes'>('episodes');
@@ -48,7 +49,9 @@ export const App = () => {
     }
   };
 
-  const activeEpisodeData = episodes.find((ep) => ep.episode_number === currentEpisode) || episodes[0];
+  const activeEpisodeData = episodes.find((ep) => Number(ep.episode_number) === currentEpisode) || episodes[0];
+  const sortedEpisodes = [...episodes].sort((a, b) => Number(a.episode_number) - Number(b.episode_number));
+  const displayEpisode = isTransitioning && nextEpisodeData ? nextEpisodeData : activeEpisodeData;
 
   const handleSelectEpisode = (epInput: number | string) => {
     const epNumber = Number(epInput);
@@ -56,24 +59,49 @@ export const App = () => {
     setShowEpisodeModal(false);
   };
 
-  // Triggered the exact moment the video finishes or reaches the end
+  // Ask the browser/Android WebView to start the currently loaded episode.
+  // Autoplay with sound is subject to the device's media-playback settings.
+  const attemptAutoplay = async (video: HTMLVideoElement) => {
+    try {
+      await video.play();
+    } catch (error) {
+      console.warn('Automatic video playback was blocked by the device:', error);
+    }
+  };
+
+  // Run whenever a new episode URL is rendered, including the first episode on app launch.
+  useEffect(() => {
+    const video = videoRef.current;
+    if (video && displayEpisode?.video_url) {
+      void attemptAutoplay(video);
+    }
+  }, [displayEpisode?.video_url]);
+
+  // Triggered when an episode finishes. Select the next available episode number.
   const handleVideoEnded = () => {
     if (isTransitioning) return; // Prevent duplicate triggers
 
-    const nextEpNum = currentEpisode + 1;
-    const foundNextEp = episodes.find((ep) => ep.episode_number === nextEpNum);
+    const foundNextEp = episodes
+      .filter((ep) => Number(ep.episode_number) > currentEpisode)
+      .sort((a, b) => Number(a.episode_number) - Number(b.episode_number))[0];
 
     if (foundNextEp) {
+      const nextEpNum = Number(foundNextEp.episode_number);
       setNextEpisodeData(foundNextEp);
       setIsTransitioning(true);
 
-      // Match this timeout duration with your CSS transition (0.4s)
+      // Keep the existing 0.4-second slide transition. The new video is mounted
+      // immediately and its onCanPlay handler attempts to start playback.
       setTimeout(() => {
         setCurrentEpisode(nextEpNum);
         setIsTransitioning(false);
         setNextEpisodeData(null);
       }, 400);
     }
+  };
+
+  const handleVideoCanPlay = (event: SyntheticEvent<HTMLVideoElement>) => {
+    void attemptAutoplay(event.currentTarget);
   };
 
   const handleRequireRegistration = () => {
@@ -84,11 +112,6 @@ export const App = () => {
     setShowRegModal(false);
   };
 
-  // Sort episodes by episode_number to keep them properly ordered
-  const sortedEpisodes = [...episodes].sort((a, b) => a.episode_number - b.episode_number);
-
-  const displayEpisode = isTransitioning && nextEpisodeData ? nextEpisodeData : activeEpisodeData;
-
   return (
     <div style={{ backgroundColor: '#000', color: '#fff', height: '100vh', width: '100vw', margin: 0, padding: 0, overflow: 'hidden', position: 'relative', fontFamily: 'sans-serif' }}>
       
@@ -96,6 +119,7 @@ export const App = () => {
       <div className="video-frame video-transition-container" style={{ width: '100%', height: '100%', position: 'relative', background: '#000', overflow: 'hidden' }}>
         <div className={`episode-slide-wrapper ${isTransitioning ? 'slide-enter-active' : 'slide-enter'}`} style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}>
           <video
+            ref={videoRef}
             key={displayEpisode?.id || displayEpisode?.episode_number || currentEpisode}
             className="video-element"
             controls
@@ -103,6 +127,7 @@ export const App = () => {
             playsInline
             preload="auto"
             onEnded={handleVideoEnded}
+            onCanPlay={handleVideoCanPlay}
             onTimeUpdate={(e) => {
               const video = e.currentTarget;
               // Fallback for mobile WebViews where 'onEnded' can be skipped
