@@ -71,7 +71,7 @@ export const App = () => {
     }
   };
 
-  // Run whenever a new episode URL is rendered, but only after the user has clicked start.
+  // Run whenever a new episode URL is rendered after playback has started.
   useEffect(() => {
     const video = videoRef.current;
     if (video && displayEpisode?.video_url && hasStarted) {
@@ -117,20 +117,13 @@ export const App = () => {
   return (
     <div style={{ backgroundColor: '#000', color: '#fff', height: '100vh', width: '100vw', margin: 0, padding: 0, overflow: 'hidden', position: 'relative', fontFamily: 'sans-serif' }}>
       
-      {/* Fullscreen Video Frame Container with Slide Transition Wrapper */}
+      {/* Fullscreen Video Frame Container */}
       <div className="video-frame video-transition-container" style={{ width: '100%', height: '100%', position: 'relative', background: '#000', overflow: 'hidden' }}>
         
-        {/* Click-to-Watch Movie Poster Overlay */}
-        {!hasStarted && (
+        {/* Click-to-Watch Movie Poster Overlay (Shown on App Startup) */}
+        {!hasStarted ? (
           <div 
-            onClick={() => {
-              setHasStarted(true);
-              setTimeout(() => {
-                if (videoRef.current) {
-                  videoRef.current.play().catch((err) => console.warn("Playback error:", err));
-                }
-              }, 50);
-            }}
+            onClick={() => setHasStarted(true)}
             style={{
               position: 'absolute',
               inset: 0,
@@ -172,56 +165,61 @@ export const App = () => {
               </p>
             </div>
           </div>
+        ) : (
+          /* Video Player mounts fresh and autoplays immediately upon click */
+          <div className={`episode-slide-wrapper ${isTransitioning ? 'slide-enter-active' : 'slide-enter'}`} style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}>
+            <video
+              ref={videoRef}
+              key={displayEpisode?.id || displayEpisode?.episode_number || currentEpisode}
+              className="video-element"
+              controls
+              autoPlay
+              playsInline
+              preload="auto"
+              onEnded={handleVideoEnded}
+              onCanPlay={handleVideoCanPlay}
+              onTimeUpdate={(e) => {
+                const video = e.currentTarget;
+                if (video.duration && video.currentTime >= video.duration - 0.4 && !isTransitioning) {
+                  handleVideoEnded();
+                }
+              }}
+              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+            >
+              <source src={displayEpisode?.video_url || ''} type="video/mp4" />
+              Your browser does not support the video tag.
+            </video>
+          </div>
         )}
 
-        <div className={`episode-slide-wrapper ${isTransitioning ? 'slide-enter-active' : 'slide-enter'}`} style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}>
-          <video
-            ref={videoRef}
-            key={displayEpisode?.id || displayEpisode?.episode_number || currentEpisode}
-            className="video-element"
-            controls
-            playsInline
-            preload="auto"
-            poster={posterUrl} /* <-- THIS ENSURES THE MOVIE POSTER SHOWS WHILE LOADING INSTEAD OF THE GREY BOX */
-            onEnded={handleVideoEnded}
-            onCanPlay={handleVideoCanPlay}
-            onTimeUpdate={(e) => {
-              const video = e.currentTarget;
-              if (video.duration && video.currentTime >= video.duration - 0.4 && !isTransitioning) {
-                handleVideoEnded();
-              }
-            }}
-            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-          >
-            <source src={displayEpisode?.video_url || ''} type="video/mp4" />
-            Your browser does not support the video tag.
-          </video>
-        </div>
-
-        {/* Bottom-Left Movie Title & Synopsis Overlay */}
-        <div style={{
-          position: 'absolute',
-          bottom: '24px',
-          left: '16px',
-          right: '80px',
-          zIndex: 15,
-          pointerEvents: 'none',
-          textShadow: '0 1px 4px rgba(0,0,0,0.8)'
-        }}>
-          <h2 style={{ margin: '0 0 4px 0', fontSize: '18px', fontWeight: 700, color: '#fff' }}>
-            Shadows: Deep waters — Ep. {displayEpisode?.episode_number || currentEpisode}
-          </h2>
-          <p style={{ margin: 0, fontSize: '12px', color: '#e0e0e0', lineHeight: 1.3 }}>
-            Dark secrets emerge as strange tides sweep across the quiet coastal village.
-          </p>
-        </div>
+        {/* Bottom-Left Movie Title & Synopsis Overlay (Shown during playback) */}
+        {hasStarted && (
+          <div style={{
+            position: 'absolute',
+            bottom: '24px',
+            left: '16px',
+            right: '80px',
+            zIndex: 15,
+            pointerEvents: 'none',
+            textShadow: '0 1px 4px rgba(0,0,0,0.8)'
+          }}>
+            <h2 style={{ margin: '0 0 4px 0', fontSize: '18px', fontWeight: 700, color: '#fff' }}>
+              Shadows: Deep waters — Ep. {displayEpisode?.episode_number || currentEpisode}
+            </h2>
+            <p style={{ margin: 0, fontSize: '12px', color: '#e0e0e0', lineHeight: 1.3 }}>
+              Dark secrets emerge as strange tides sweep across the quiet coastal village.
+            </p>
+          </div>
+        )}
 
         {/* Floating Social Features & Episode Button on Middle Right */}
-        <VideoSocialFeatures 
-          videoId={String(currentEpisode)} 
-          onOpenEpisodes={() => setShowEpisodeModal(true)}
-          onRequireRegistration={handleRequireRegistration}
-        />
+        {hasStarted && (
+          <VideoSocialFeatures 
+            videoId={String(currentEpisode)} 
+            onOpenEpisodes={() => setShowEpisodeModal(true)}
+            onRequireRegistration={handleRequireRegistration}
+          />
+        )}
       </div>
 
       {/* Episode Selector Modal */}
