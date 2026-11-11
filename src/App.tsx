@@ -11,6 +11,9 @@ export const App = () => {
   const [showEpisodeModal, setShowEpisodeModal] = useState(false);
   const [activeTab, setActiveTab] = useState<'synopsis' | 'episodes'>('episodes');
 
+  // Track whether the user has clicked start from the poster overlay
+  const [hasStarted, setHasStarted] = useState(false);
+
   // Transition States for Bottom Slide on Video End
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [nextEpisodeData, setNextEpisodeData] = useState<any>(null);
@@ -60,7 +63,6 @@ export const App = () => {
   };
 
   // Ask the browser/Android WebView to start the currently loaded episode.
-  // Autoplay with sound is subject to the device's media-playback settings.
   const attemptAutoplay = async (video: HTMLVideoElement) => {
     try {
       await video.play();
@@ -69,13 +71,13 @@ export const App = () => {
     }
   };
 
-  // Run whenever a new episode URL is rendered, including the first episode on app launch.
+  // Run whenever a new episode URL is rendered, but only after the user has clicked start.
   useEffect(() => {
     const video = videoRef.current;
-    if (video && displayEpisode?.video_url) {
+    if (video && displayEpisode?.video_url && hasStarted) {
       void attemptAutoplay(video);
     }
-  }, [displayEpisode?.video_url]);
+  }, [displayEpisode?.video_url, hasStarted]);
 
   // Triggered when an episode finishes. Select the next available episode number.
   const handleVideoEnded = () => {
@@ -90,8 +92,6 @@ export const App = () => {
       setNextEpisodeData(foundNextEp);
       setIsTransitioning(true);
 
-      // Keep the existing 0.4-second slide transition. The new video is mounted
-      // immediately and its onCanPlay handler attempts to start playback.
       setTimeout(() => {
         setCurrentEpisode(nextEpNum);
         setIsTransitioning(false);
@@ -101,7 +101,9 @@ export const App = () => {
   };
 
   const handleVideoCanPlay = (event: SyntheticEvent<HTMLVideoElement>) => {
-    void attemptAutoplay(event.currentTarget);
+    if (hasStarted) {
+      void attemptAutoplay(event.currentTarget);
+    }
   };
 
   const handleRequireRegistration = () => {
@@ -117,16 +119,67 @@ export const App = () => {
       
       {/* Fullscreen Video Frame Container with Slide Transition Wrapper */}
       <div className="video-frame video-transition-container" style={{ width: '100%', height: '100%', position: 'relative', background: '#000', overflow: 'hidden' }}>
+        
+        {/* Click-to-Watch Movie Poster Overlay */}
+        {!hasStarted && (
+          <div 
+            onClick={() => {
+              setHasStarted(true);
+              if (videoRef.current) {
+                videoRef.current.play();
+              }
+            }}
+            style={{
+              position: 'absolute',
+              inset: 0,
+              zIndex: 30,
+              cursor: 'pointer',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: '#000'
+            }}
+          >
+            <img 
+              src={posterUrl} 
+              alt="Movie Poster" 
+              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0.85 }} 
+            />
+            <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)' }} />
+            
+            <div style={{ position: 'relative', zIndex: 2, textAlign: 'center', padding: '20px' }}>
+              <div style={{
+                width: '72px',
+                height: '72px',
+                borderRadius: '50%',
+                backgroundColor: 'rgba(229, 9, 20, 0.9)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 16px auto',
+                boxShadow: '0 4px 20px rgba(229, 9, 20, 0.6)'
+              }}>
+                <span style={{ fontSize: '28px', color: '#fff', marginLeft: '4px' }}>▶</span>
+              </div>
+              <h2 style={{ color: '#fff', fontSize: '22px', fontWeight: 'bold', margin: '0 0 8px 0', textShadow: '0 2px 4px rgba(0,0,0,0.8)' }}>
+                Shadows: Deep Waters
+              </h2>
+              <p style={{ color: '#fff', fontSize: '16px', fontWeight: '600', margin: 0, textShadow: '0 2px 4px rgba(0,0,0,0.8)', background: 'rgba(0,0,0,0.6)', padding: '8px 16px', borderRadius: '20px', display: 'inline-block' }}>
+                Click to watch season 1
+              </p>
+            </div>
+          </div>
+        )}
+
         <div className={`episode-slide-wrapper ${isTransitioning ? 'slide-enter-active' : 'slide-enter'}`} style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}>
           <video
             ref={videoRef}
             key={displayEpisode?.id || displayEpisode?.episode_number || currentEpisode}
             className="video-element"
             controls
-            autoPlay
             playsInline
             preload="auto"
-            poster={posterUrl} /* <-- ADD THIS LINE HERE */
             onEnded={handleVideoEnded}
             onCanPlay={handleVideoCanPlay}
             onTimeUpdate={(e) => {
