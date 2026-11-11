@@ -126,6 +126,7 @@ export const App = () => {
             autoPlay
             playsInline
             preload="auto"
+            poster={posterUrl} /* <-- ADD THIS LINE HERE */
             onEnded={handleVideoEnded}
             onCanPlay={handleVideoCanPlay}
             onTimeUpdate={(e) => {
