@@ -125,9 +125,12 @@ export const App = () => {
           <div 
             onClick={() => {
               setHasStarted(true);
-              if (videoRef.current) {
-                videoRef.current.play();
-              }
+              // Small delay ensures the overlay unmounts and the video element is fully ready to play
+              setTimeout(() => {
+                if (videoRef.current) {
+                  videoRef.current.play().catch((err) => console.warn("Playback error:", err));
+                }
+              }, 50);
             }}
             style={{
               position: 'absolute',
