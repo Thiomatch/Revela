@@ -125,7 +125,6 @@ export const App = () => {
           <div 
             onClick={() => {
               setHasStarted(true);
-              // Small delay ensures the overlay unmounts and the video element is fully ready to play
               setTimeout(() => {
                 if (videoRef.current) {
                   videoRef.current.play().catch((err) => console.warn("Playback error:", err));
@@ -183,11 +182,11 @@ export const App = () => {
             controls
             playsInline
             preload="auto"
+            poster={posterUrl} /* <-- THIS ENSURES THE MOVIE POSTER SHOWS WHILE LOADING INSTEAD OF THE GREY BOX */
             onEnded={handleVideoEnded}
             onCanPlay={handleVideoCanPlay}
             onTimeUpdate={(e) => {
               const video = e.currentTarget;
-              // Fallback for mobile WebViews where 'onEnded' can be skipped
               if (video.duration && video.currentTime >= video.duration - 0.4 && !isTransitioning) {
                 handleVideoEnded();
               }
@@ -225,7 +224,7 @@ export const App = () => {
         />
       </div>
 
-      {/* Episode Selector Modal (Redesigned Grid Layout) */}
+      {/* Episode Selector Modal */}
       {showEpisodeModal && (
         <div 
           onClick={() => setShowEpisodeModal(false)}
@@ -252,10 +251,8 @@ export const App = () => {
               boxShadow: '0 -10px 30px rgba(0,0,0,0.7)'
             }}
           >
-            {/* Top Drag Indicator Handle */}
             <div style={{ width: '40px', height: '4px', background: '#3a3a3c', borderRadius: '2px', margin: '0 auto 16px auto' }} />
 
-            {/* Header Series Info Preview */}
             <div style={{ display: 'flex', gap: '14px', alignItems: 'center', marginBottom: '20px' }}>
               <div style={{ width: '64px', height: '84px', background: '#2c2c2e', borderRadius: '8px', overflow: 'hidden', flexShrink: '0' }}>
                 <img 
@@ -272,7 +269,6 @@ export const App = () => {
               </div>
             </div>
 
-            {/* Synopsis / Episodes Navigation Tabs */}
             <div style={{ display: 'flex', gap: '24px', borderBottom: '1px solid #2c2c2e', marginBottom: '16px' }}>
               <button
                 onClick={() => setActiveTab('synopsis')}
@@ -306,7 +302,6 @@ export const App = () => {
               </button>
             </div>
 
-            {/* Tab Content */}
             {activeTab === 'synopsis' ? (
               <div style={{ color: '#d1d1d6', fontSize: '14px', lineHeight: '1.5', padding: '10px 0 20px 0' }}>
                 <p style={{ margin: 0 }}>
@@ -315,14 +310,12 @@ export const App = () => {
               </div>
             ) : (
               <div>
-                {/* Range Selector Subtitle */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                   <span style={{ fontSize: '13px', color: '#8e8e93', fontWeight: '600' }}>
                     Episodes ({sortedEpisodes.length})
                   </span>
                 </div>
 
-                {/* Numbered Episode Grid */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '8px' }}>
                   {sortedEpisodes.map((ep) => {
                     const epNum = ep.episode_number;
