@@ -3,8 +3,13 @@ import OneSignal from '@onesignal/capacitor-plugin';
 import { supabase } from './supabaseClient';
 import { RegistrationModal } from './RegistrationModal';
 import VideoSocialFeatures from './VideoSocialFeatures';
+import './App.css';
+import AdministrativePortal, { type AdminPortalView } from './AdministrativePortal';
+import { getCurrentAdmin, type AdminUser } from './adminStore';
 
 export const App = () => {
+  const [adminView, setAdminView] = useState<AdminPortalView>('player');
+  const [adminUser, setAdminUser] = useState<AdminUser | null>(null);
   const [episodes, setEpisodes] = useState<any[]>([]);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [currentEpisode, setCurrentEpisode] = useState<number>(1);
@@ -37,6 +42,11 @@ export const App = () => {
 
     initOneSignal();
     fetchEpisodes();
+    try {
+      setAdminUser(getCurrentAdmin());
+    } catch (error) {
+      console.error('Unable to load the administrative profile:', error);
+    }
   }, []);
 
   const fetchEpisodes = async () => {
@@ -79,6 +89,15 @@ export const App = () => {
     }
   }, [displayEpisode?.video_url, hasStarted]);
 
+  useEffect(() => {
+    const video = videoRef.current;
+    if (adminView !== 'player') {
+      video?.pause();
+    } else if (video && hasStarted) {
+      void attemptAutoplay(video);
+    }
+  }, [adminView, hasStarted]);
+
   // Triggered when an episode finishes. Select the next available episode number.
   const handleVideoEnded = () => {
     if (isTransitioning) return; // Prevent duplicate triggers
@@ -115,10 +134,10 @@ export const App = () => {
   };
 
   return (
-    <div style={{ backgroundColor: '#000', color: '#fff', height: '100vh', width: '100vw', margin: 0, padding: 0, overflow: 'hidden', position: 'relative', fontFamily: 'sans-serif' }}>
+    <div className="revela-app" style={{ backgroundColor: '#000', color: '#fff', height: '100vh', width: '100vw', margin: 0, padding: 0, overflow: 'hidden', position: 'relative', fontFamily: 'sans-serif' }}>
       
       {/* Fullscreen Video Frame Container */}
-      <div className="video-frame video-transition-container" style={{ width: '100%', height: '100%', position: 'relative', background: '#000', overflow: 'hidden' }}>
+      <div className="video-frame video-transition-container" style={{ display: adminView === 'player' ? 'block' : 'none', width: '100%', height: '100%', position: 'relative', background: '#000', overflow: 'hidden' }}>
         
         {/* Click-to-Watch Movie Poster Overlay (Shown on App Startup) */}
         {!hasStarted ? (
@@ -221,7 +240,27 @@ export const App = () => {
             onRequireRegistration={handleRequireRegistration}
           />
         )}
+
+        <button
+          type="button"
+          className="admin-nav-button"
+          onClick={() => setAdminView(adminUser ? 'profile' : 'rules')}
+        >
+          {adminUser ? 'Administrative Profile' : 'Administrative User'}
+        </button>
       </div>
+
+      {adminView !== 'player' && (
+        <AdministrativePortal
+          view={adminView}
+          adminUser={adminUser}
+          onNavigate={setAdminView}
+          onAdminCreated={(user) => {
+            setAdminUser(user);
+            setAdminView('profile');
+          }}
+        />
+      )}
 
       {/* Episode Selector Modal */}
       {showEpisodeModal && (
@@ -353,11 +392,13 @@ export const App = () => {
       )}
 
       {/* Registration Modal Gate */}
-      <RegistrationModal
-        isOpen={showRegModal}
-        onClose={() => setShowRegModal(false)}
-        onSuccess={handleRegistrationSuccess}
-      />
+      {adminView === 'player' && (
+        <RegistrationModal
+          isOpen={showRegModal}
+          onClose={() => setShowRegModal(false)}
+          onSuccess={handleRegistrationSuccess}
+        />
+      )}
     </div>
   );
 };
