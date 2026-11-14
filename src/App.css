@@ -994,16 +994,6 @@ body {
   border-radius: 999px;
 }
 
-.admin-demo-label {
-  padding: 2px 5px;
-  color: #ffb9bd;
-  background: rgba(229, 9, 20, 0.16);
-  border-radius: 4px;
-  font-size: 0.58rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-}
-
 .admin-portal-content {
   position: relative;
   width: min(1120px, 100%);
@@ -1030,7 +1020,7 @@ body {
 .admin-page-intro h1,
 .admin-form-heading h1,
 .admin-dashboard-heading h1,
-.admin-review-page h1 {
+.admin-library-page h1 {
   margin: 12px 0;
   color: #fff;
   font-size: clamp(2.2rem, 5vw, 4rem);
@@ -1045,8 +1035,7 @@ body {
 
 .admin-page-intro > p,
 .admin-form-heading > p,
-.admin-dashboard-heading > div > p,
-.admin-review-description {
+.admin-dashboard-heading > div > p {
   color: #a4a5ac;
   font-size: 0.96rem;
   line-height: 1.65;
@@ -1338,6 +1327,24 @@ body {
   width: 100%;
 }
 
+.admin-auth-switch {
+  margin-top: 18px;
+  color: #a4a5ac;
+  text-align: center;
+  font-size: 0.82rem;
+}
+
+.admin-auth-switch button {
+  margin-left: 6px;
+  padding: 0;
+  color: #ff858b;
+  background: none;
+  border: 0;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
 .admin-dashboard-heading {
   display: flex;
   align-items: flex-end;
@@ -1620,7 +1627,6 @@ body {
   font-size: 0.76rem;
 }
 
-.admin-video-unavailable,
 .admin-empty-state {
   padding: 28px 18px;
   color: #8d8e95;
@@ -1631,17 +1637,20 @@ body {
   font-size: 0.84rem;
 }
 
-.admin-review-page > h1 {
+.admin-library-page > h1 {
   margin-bottom: 10px;
   font-size: clamp(2rem, 4vw, 3.2rem);
 }
 
-.admin-review-description {
+.admin-library-page > p {
   max-width: 760px;
   margin-bottom: 26px;
+  color: #a4a5ac;
+  font-size: 0.96rem;
+  line-height: 1.65;
 }
 
-.admin-review-page .admin-video-list {
+.admin-library-page .admin-video-list {
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
 }
 
@@ -1717,10 +1726,6 @@ body {
     font-size: 0.72rem;
   }
 
-  .admin-demo-label {
-    display: none;
-  }
-
   .admin-portal-nav .admin-return-button {
     padding: 8px 10px;
   }
@@ -1741,6 +1746,11 @@ body {
     right: 12px;
     padding: 8px 11px;
     font-size: 0.72rem;
+  }
+
+  .admin-live-videos-button {
+    right: auto;
+    left: 18px;
   }
 
   .admin-portal-header {

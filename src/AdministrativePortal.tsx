@@ -1,24 +1,26 @@
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import {
-  approveAdminVideo,
   createAdminUser,
-  getAdminVideoFile,
+  createProviderProfile,
+  getCurrentAdmin,
   getAdminVideos,
+  getApprovedVideos,
+  subscribeToCreatorVideos,
   submitAdminVideo,
   type AdminUser,
   type AdminVideo,
 } from './adminStore';
+import { supabase } from './supabaseClient';
 
-export type AdminPortalView = 'player' | 'rules' | 'signup' | 'profile' | 'review' | 'library';
+export type AdminPortalView = 'player' | 'rules' | 'signup' | 'profile' | 'library';
 
 type AdministrativePortalProps = {
   view: AdminPortalView;
   adminUser: AdminUser | null;
   onNavigate: (view: AdminPortalView) => void;
   onAdminCreated: (user: AdminUser) => void;
+  onPlayVideo: (video: AdminVideo) => void;
 };
-
-type VideoWithPreview = AdminVideo & { previewUrl: string | null };
 
 const uploadLimitBytes = 250 * 1024 * 1024;
 
@@ -37,6 +39,7 @@ export default function AdministrativePortal({
   adminUser,
   onNavigate,
   onAdminCreated,
+  onPlayVideo,
 }: AdministrativePortalProps) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -44,40 +47,33 @@ export default function AdministrativePortal({
   const [channelName, setChannelName] = useState('');
   const [region, setRegion] = useState('');
   const [avatarPreview, setAvatarPreview] = useState('');
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [rulesAccepted, setRulesAccepted] = useState(false);
+  const [isLoginMode, setIsLoginMode] = useState(false);
   const [videoTitle, setVideoTitle] = useState('');
   const [videoFile, setVideoFile] = useState<File | null>(null);
-  const [videos, setVideos] = useState<VideoWithPreview[]>([]);
+  const [videos, setVideos] = useState<AdminVideo[]>([]);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [refreshVersion, setRefreshVersion] = useState(0);
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
-  const activePreviewUrls = useRef<string[]>([]);
 
   useEffect(() => {
-    if (view !== 'profile' && view !== 'review' && view !== 'library') return undefined;
+    if (view !== 'profile' && view !== 'library') return undefined;
 
     let isCancelled = false;
 
     const loadVideos = async () => {
       try {
-        const savedVideos = await getAdminVideos();
-        const videosWithPreviews = await Promise.all(
-          savedVideos.map(async (video) => {
-            const file = await getAdminVideoFile(video.id);
-            if (!file) return { ...video, previewUrl: null };
-            const previewUrl = URL.createObjectURL(file);
-            return { ...video, previewUrl };
-          }),
-        );
+        const savedVideos = view === 'library'
+          ? await getApprovedVideos()
+          : adminUser
+            ? await getAdminVideos(adminUser.email)
+            : [];
         if (!isCancelled) {
-          setVideos(videosWithPreviews);
+          setVideos(savedVideos);
           setErrorMessage('');
-        } else {
-          videosWithPreviews.forEach((video) => {
-            if (video.previewUrl) URL.revokeObjectURL(video.previewUrl);
-          });
         }
       } catch (error) {
         if (!isCancelled) {
@@ -87,16 +83,14 @@ export default function AdministrativePortal({
     };
 
     void loadVideos();
+    const unsubscribe = subscribeToCreatorVideos(() => void loadVideos());
+    const refreshTimer = window.setInterval(() => void loadVideos(), 15000);
     return () => {
       isCancelled = true;
+      unsubscribe();
+      window.clearInterval(refreshTimer);
     };
-  }, [view, refreshVersion]);
-
-  useEffect(() => {
-    const previousUrls = activePreviewUrls.current;
-    activePreviewUrls.current = videos.flatMap((video) => video.previewUrl ? [video.previewUrl] : []);
-    return () => previousUrls.forEach((url) => URL.revokeObjectURL(url));
-  }, [videos]);
+  }, [adminUser, view, refreshVersion]);
 
   const handleAvatarChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.currentTarget.files?.[0];
@@ -116,6 +110,7 @@ export default function AdministrativePortal({
     reader.onload = () => {
       if (typeof reader.result === 'string') {
         setAvatarPreview(reader.result);
+        setAvatarFile(file);
         setErrorMessage('');
       }
     };
@@ -123,10 +118,10 @@ export default function AdministrativePortal({
     reader.readAsDataURL(file);
   };
 
-  const handleSignup = (event: FormEvent<HTMLFormElement>) => {
+  const handleSignup = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setErrorMessage('');
-    if (!avatarPreview) {
+    if (!avatarPreview || !avatarFile) {
       setErrorMessage('Please add a profile photo to continue.');
       return;
     }
@@ -135,19 +130,67 @@ export default function AdministrativePortal({
       return;
     }
 
+    setIsSubmitting(true);
     try {
-      const user = createAdminUser({
+      const user = await createAdminUser({
         name: name.trim(),
         email: email.trim(),
-        avatar: avatarPreview,
         channelName: channelName.trim(),
         region: region.trim(),
+        avatarFile,
+        password,
       });
       setPassword('');
       setSuccessMessage('Successful! You are now an administrative user of Revela.');
       onAdminCreated(user);
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'Your administrative account could not be created.');
+      if (error instanceof Error && error.message === 'CONFIRM_EMAIL') {
+        setIsLoginMode(true);
+        setSuccessMessage('Check your email to confirm your account, then sign in to finish setting up your provider profile.');
+      } else {
+        setErrorMessage(error instanceof Error ? error.message : 'Your administrative account could not be created.');
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setIsSubmitting(true);
+    setErrorMessage('');
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+      if (error) throw error;
+      if (!data.user) throw new Error('Supabase did not return a signed-in user.');
+
+      const existingProfile = await getCurrentAdmin(data.user.email ?? email.trim());
+      if (existingProfile) {
+        setSuccessMessage('Successful! You are now an administrative user of Revela.');
+        onAdminCreated(existingProfile);
+        return;
+      }
+
+      if (!avatarFile) {
+        setErrorMessage('Your account is signed in, but its provider profile is incomplete. Please choose a profile photo to finish setup.');
+        return;
+      }
+      const user = await createProviderProfile({
+        name: name.trim() || email.split('@')[0],
+        email: email.trim(),
+        channelName: channelName.trim() || name.trim() || email.split('@')[0],
+        region: region.trim(),
+        avatarFile,
+      });
+      setSuccessMessage('Successful! You are now an administrative user of Revela.');
+      onAdminCreated(user);
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'Unable to sign in to your provider account.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -190,17 +233,6 @@ export default function AdministrativePortal({
     }
   };
 
-  const handleApproval = async (id: string) => {
-    setErrorMessage('');
-    try {
-      await approveAdminVideo(id);
-      setRefreshVersion((version) => version + 1);
-      setSuccessMessage('Video approved. The content provider will see an approval notification.');
-    } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'The video could not be approved.');
-    }
-  };
-
   const renderRules = () => (
     <section className="admin-rules-card">
       <div className="admin-section-kicker">CREATOR GUIDELINES</div>
@@ -214,17 +246,13 @@ export default function AdministrativePortal({
     </section>
   );
 
-  const renderVideoList = (reviewMode: boolean, libraryMode = false) => {
-    const visibleVideos = libraryMode
-      ? videos.filter((video) => video.status === 'approved')
-      : reviewMode
-        ? videos
-        : videos.filter((video) => video.ownerEmail.toLowerCase() === adminUser?.email.toLowerCase());
+  const renderVideoList = (libraryMode = false) => {
+    const visibleVideos = libraryMode ? videos : videos.filter((video) => video.ownerEmail.toLowerCase() === adminUser?.email.toLowerCase());
 
     if (!visibleVideos.length) {
       const emptyMessage = libraryMode
         ? 'No approved creator videos are live yet.'
-        : `No videos ${reviewMode ? 'have been submitted' : 'uploaded yet'}.`;
+        : 'No videos uploaded yet.';
       return <div className="admin-empty-state">{emptyMessage}</div>;
     }
 
@@ -232,30 +260,24 @@ export default function AdministrativePortal({
       <div className="admin-video-list">
         {visibleVideos.map((video) => (
           <article className="admin-video-card" key={video.id}>
-            {video.previewUrl ? (
-              <video className="admin-video-preview" controls preload="metadata" src={video.previewUrl}>
-                Your browser does not support video playback.
-              </video>
-            ) : (
-              <div className="admin-video-unavailable">Preview unavailable in this browser</div>
-            )}
+            {libraryMode && <video className="admin-video-preview" controls preload="metadata" src={video.videoUrl}>Your browser does not support video playback.</video>}
             <div className="admin-video-details">
               <div className="admin-video-heading">
                 <div>
                   <h3>{video.title}</h3>
-                  <p>{video.fileName} · {formatFileSize(video.size)}</p>
-                  <p>{reviewMode ? `Provider: ${video.ownerEmail} · ` : ''}Submitted {formatDate(video.uploadedAt)}</p>
+                  {libraryMode && <p>Provider: {video.ownerEmail}</p>}
+                  {video.uploadedAt && <p>Submitted {formatDate(video.uploadedAt)}</p>}
                 </div>
                 <span className={`admin-status admin-status-${video.status}`}>
-                  {libraryMode ? 'Live on Revela' : video.status}
+                  {libraryMode ? 'Live on Revela' : video.status === 'pending' ? 'Pending Review' : video.status}
                 </span>
               </div>
-              {reviewMode && video.status === 'pending' && (
-                <button className="admin-primary-button" type="button" onClick={() => void handleApproval(video.id)}>
-                  Approve video
+              {libraryMode && (
+                <button className="admin-primary-button" type="button" onClick={() => onPlayVideo(video)}>
+                  Play video <span aria-hidden="true">▶</span>
                 </button>
               )}
-              {!reviewMode && !libraryMode && video.status === 'approved' && (
+              {!libraryMode && video.status === 'approved' && (
                 <p className="admin-approved-notice" role="status">Your video has been approved.</p>
               )}
             </div>
@@ -276,7 +298,6 @@ export default function AdministrativePortal({
           <button type="button" onClick={() => onNavigate('rules')}>Guidelines</button>
           <button type="button" onClick={() => onNavigate('library')}>Live videos</button>
           {adminUser && <button type="button" onClick={() => onNavigate('profile')}>My profile</button>}
-          <button type="button" onClick={() => onNavigate('review')}>Review queue <span className="admin-demo-label">DEMO</span></button>
           <button className="admin-return-button" type="button" onClick={() => onNavigate('player')}>Back to player</button>
         </nav>
       </header>
@@ -314,46 +335,81 @@ export default function AdministrativePortal({
             <button type="button" className="admin-back-link" onClick={() => onNavigate('rules')}>← Back to guidelines</button>
             <div className="admin-form-heading">
               <div className="admin-section-kicker">CONTENT PROVIDER APPLICATION</div>
-              <h1 id="admin-page-title">Create your creator profile</h1>
-              <p>Tell us who you are and where your content comes from.</p>
+              <h1 id="admin-page-title">{isLoginMode ? 'Sign in to your creator profile' : 'Create your creator profile'}</h1>
+              <p>{isLoginMode ? 'Continue with your Supabase Auth account.' : 'Tell us who you are and where your content comes from.'}</p>
             </div>
-            <form className="admin-form-card" onSubmit={handleSignup}>
-              <div className="admin-avatar-field">
-                <button className="admin-avatar-picker" type="button" onClick={() => avatarInputRef.current?.click()} aria-label="Choose profile photo">
-                  {avatarPreview ? <img src={avatarPreview} alt="Profile preview" /> : <span aria-hidden="true">＋</span>}
-                </button>
-                <div>
-                  <strong>Profile photo</strong>
-                  <p>Choose an image, up to 2 MB.</p>
-                  <button className="admin-text-button" type="button" onClick={() => avatarInputRef.current?.click()}>Upload photo</button>
+            {isLoginMode ? (
+              <form className="admin-form-card" onSubmit={(event) => void handleLogin(event)}>
+                <div className="admin-avatar-field">
+                  <button className="admin-avatar-picker" type="button" onClick={() => avatarInputRef.current?.click()} aria-label="Choose profile photo">
+                    {avatarPreview ? <img src={avatarPreview} alt="Profile preview" /> : <span aria-hidden="true">＋</span>}
+                  </button>
+                  <div>
+                    <strong>Profile photo</strong>
+                    <p>{avatarFile ? 'Photo selected.' : 'Required only if finishing an incomplete provider profile.'}</p>
+                    <button className="admin-text-button" type="button" onClick={() => avatarInputRef.current?.click()}>Choose photo</button>
+                  </div>
+                  <input ref={avatarInputRef} className="admin-visually-hidden" type="file" accept="image/*" onChange={handleAvatarChange} />
                 </div>
-                <input ref={avatarInputRef} className="admin-visually-hidden" type="file" accept="image/*" onChange={handleAvatarChange} />
-              </div>
+                <div className="admin-form-grid">
+                  <label className="admin-field admin-field-full">Email address
+                    <input autoComplete="email" type="email" required value={email} onChange={(event) => setEmail(event.target.value)} />
+                  </label>
+                  <label className="admin-field admin-field-full">Password
+                    <input autoComplete="current-password" type="password" required value={password} onChange={(event) => setPassword(event.target.value)} />
+                  </label>
+                </div>
+                <button className="admin-primary-button admin-submit-button" type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? 'Signing in…' : 'Sign in'} <span aria-hidden="true">→</span>
+                </button>
+              </form>
+            ) : (
+              <form className="admin-form-card" onSubmit={(event) => void handleSignup(event)}>
+                <div className="admin-avatar-field">
+                  <button className="admin-avatar-picker" type="button" onClick={() => avatarInputRef.current?.click()} aria-label="Choose profile photo">
+                    {avatarPreview ? <img src={avatarPreview} alt="Profile preview" /> : <span aria-hidden="true">＋</span>}
+                  </button>
+                  <div>
+                    <strong>Profile photo</strong>
+                    <p>Choose an image, up to 2 MB.</p>
+                    <button className="admin-text-button" type="button" onClick={() => avatarInputRef.current?.click()}>Upload photo</button>
+                  </div>
+                  <input ref={avatarInputRef} className="admin-visually-hidden" type="file" accept="image/*" onChange={handleAvatarChange} />
+                </div>
 
-              <div className="admin-form-grid">
-                <label className="admin-field">Full name
-                  <input autoComplete="name" required value={name} onChange={(event) => setName(event.target.value)} />
+                <div className="admin-form-grid">
+                  <label className="admin-field">Full name
+                    <input autoComplete="name" required value={name} onChange={(event) => setName(event.target.value)} />
+                  </label>
+                  <label className="admin-field">Email address
+                    <input autoComplete="email" type="email" required value={email} onChange={(event) => setEmail(event.target.value)} />
+                  </label>
+                  <label className="admin-field">Password
+                    <input autoComplete="new-password" type="password" minLength={8} required value={password} onChange={(event) => setPassword(event.target.value)} />
+                    <span className="admin-field-hint">At least 8 characters. Supabase Auth secures your password; it is never stored in the profile table.</span>
+                  </label>
+                  <label className="admin-field">Creator or channel name
+                    <input required value={channelName} onChange={(event) => setChannelName(event.target.value)} placeholder="How your channel appears on Revela" />
+                  </label>
+                  <label className="admin-field admin-field-full">Country or region
+                    <input required value={region} onChange={(event) => setRegion(event.target.value)} placeholder="Where you create or publish content" />
+                  </label>
+                </div>
+                <label className="admin-checkbox-field">
+                  <input type="checkbox" checked={rulesAccepted} onChange={(event) => setRulesAccepted(event.target.checked)} />
+                  <span>I have the rights to all content I submit and agree to follow the content rules above.</span>
                 </label>
-                <label className="admin-field">Email address
-                  <input autoComplete="email" type="email" required value={email} onChange={(event) => setEmail(event.target.value)} />
-                </label>
-                <label className="admin-field">Password
-                  <input autoComplete="new-password" type="password" minLength={8} required value={password} onChange={(event) => setPassword(event.target.value)} />
-                  <span className="admin-field-hint">At least 8 characters. Your password is not saved in this demo.</span>
-                </label>
-                <label className="admin-field">Creator or channel name
-                  <input required value={channelName} onChange={(event) => setChannelName(event.target.value)} placeholder="How your channel appears on Revela" />
-                </label>
-                <label className="admin-field admin-field-full">Country or region
-                  <input required value={region} onChange={(event) => setRegion(event.target.value)} placeholder="Where you create or publish content" />
-                </label>
-              </div>
-              <label className="admin-checkbox-field">
-                <input type="checkbox" checked={rulesAccepted} onChange={(event) => setRulesAccepted(event.target.checked)} />
-                <span>I have the rights to all content I submit and agree to follow the content rules above.</span>
-              </label>
-              <button className="admin-primary-button admin-submit-button" type="submit">Create provider account <span aria-hidden="true">→</span></button>
-            </form>
+                <button className="admin-primary-button admin-submit-button" type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? 'Creating account…' : 'Create provider account'} <span aria-hidden="true">→</span>
+                </button>
+              </form>
+            )}
+            <p className="admin-auth-switch">
+              {isLoginMode ? 'New to Revela?' : 'Already registered?'}
+              <button type="button" onClick={() => { setIsLoginMode(!isLoginMode); setErrorMessage(''); }}>
+                {isLoginMode ? 'Create a provider account' : 'Sign in'}
+              </button>
+            </p>
           </section>
         )}
 
@@ -385,7 +441,7 @@ export default function AdministrativePortal({
                       <div><div className="admin-section-kicker">SUBMISSIONS</div><h2>Your videos</h2></div>
                       <span className="admin-count">{videos.filter((video) => video.ownerEmail.toLowerCase() === adminUser.email.toLowerCase()).length}</span>
                     </div>
-                    {renderVideoList(false)}
+                    {renderVideoList()}
                   </section>
                 </div>
                 <div className="admin-dashboard-side">
@@ -429,21 +485,12 @@ export default function AdministrativePortal({
           )
         )}
 
-        {view === 'review' && (
-          <section className="admin-review-page">
-            <div className="admin-section-kicker">MOCK DATABASE · MASTER REVIEWER</div>
-            <h1 id="admin-page-title">Video review queue</h1>
-            <p className="admin-review-description">Preview provider submissions and approve videos to make them active. This review area is a local demo, not a secured administrator console.</p>
-            {renderVideoList(true)}
-          </section>
-        )}
-
         {view === 'library' && (
-          <section className="admin-review-page">
+          <section className="admin-library-page">
             <div className="admin-section-kicker">REVELA CREATOR VIDEOS</div>
             <h1 id="admin-page-title">Live videos</h1>
             <p className="admin-review-description">Approved submissions are now active on the platform.</p>
-            {renderVideoList(false, true)}
+            {renderVideoList(true)}
           </section>
         )}
 

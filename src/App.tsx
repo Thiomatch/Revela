@@ -5,11 +5,19 @@ import { RegistrationModal } from './RegistrationModal';
 import VideoSocialFeatures from './VideoSocialFeatures';
 import './App.css';
 import AdministrativePortal, { type AdminPortalView } from './AdministrativePortal';
-import { getCurrentAdmin, type AdminUser } from './adminStore';
+import {
+  getApprovedVideos,
+  getCurrentAdmin,
+  subscribeToCreatorVideos,
+  type AdminUser,
+  type AdminVideo,
+} from './adminStore';
 
 export const App = () => {
   const [adminView, setAdminView] = useState<AdminPortalView>('player');
   const [adminUser, setAdminUser] = useState<AdminUser | null>(null);
+  const [approvedCreatorVideos, setApprovedCreatorVideos] = useState<AdminVideo[]>([]);
+  const [selectedCreatorVideo, setSelectedCreatorVideo] = useState<AdminVideo | null>(null);
   const [episodes, setEpisodes] = useState<any[]>([]);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [currentEpisode, setCurrentEpisode] = useState<number>(1);
@@ -42,12 +50,75 @@ export const App = () => {
 
     initOneSignal();
     fetchEpisodes();
-    try {
-      setAdminUser(getCurrentAdmin());
-    } catch (error) {
-      console.error('Unable to load the administrative profile:', error);
-    }
   }, []);
+
+  useEffect(() => {
+    let isCancelled = false;
+    const loadAdmin = async (email: string) => {
+      try {
+        const user = await getCurrentAdmin(email);
+        if (!isCancelled) setAdminUser(user);
+      } catch (error) {
+        console.error('Unable to load the administrative profile from Supabase:', error);
+      }
+    };
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session?.user.email) {
+        setAdminUser(null);
+        return;
+      }
+      window.setTimeout(() => {
+        if (!isCancelled) void loadAdmin(session.user.email!);
+      }, 0);
+    });
+
+    void supabase.auth.getSession().then(({ data, error }) => {
+      if (error) {
+        console.error('Unable to restore the Supabase session:', error.message);
+        return;
+      }
+      if (data.session?.user.email) void loadAdmin(data.session.user.email);
+      else if (!isCancelled) setAdminUser(null);
+    });
+
+    return () => {
+      isCancelled = true;
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    let isCancelled = false;
+    let isLoading = false;
+    const loadApprovedVideos = async () => {
+      if (isLoading) return;
+      isLoading = true;
+      try {
+        const videos = await getApprovedVideos();
+        if (!isCancelled) setApprovedCreatorVideos(videos);
+      } catch (error) {
+        console.error('Unable to load approved creator videos from Supabase:', error);
+      } finally {
+        isLoading = false;
+      }
+    };
+
+    void loadApprovedVideos();
+    const unsubscribe = subscribeToCreatorVideos(() => void loadApprovedVideos());
+    const refreshTimer = window.setInterval(() => void loadApprovedVideos(), 15000);
+    return () => {
+      isCancelled = true;
+      unsubscribe();
+      window.clearInterval(refreshTimer);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (selectedCreatorVideo && !approvedCreatorVideos.some((video) => video.id === selectedCreatorVideo.id)) {
+      setSelectedCreatorVideo(null);
+    }
+  }, [approvedCreatorVideos, selectedCreatorVideo]);
 
   const fetchEpisodes = async () => {
     const { data, error } = await supabase
@@ -189,24 +260,26 @@ export const App = () => {
           <div className={`episode-slide-wrapper ${isTransitioning ? 'slide-enter-active' : 'slide-enter'}`} style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}>
             <video
               ref={videoRef}
-              key={displayEpisode?.id || displayEpisode?.episode_number || currentEpisode}
+              key={selectedCreatorVideo?.id || displayEpisode?.id || displayEpisode?.episode_number || currentEpisode}
               className="video-element"
               controls
               autoPlay
               playsInline
               preload="auto"
               poster={posterUrl}
-              onEnded={handleVideoEnded}
+              onEnded={() => {
+                if (!selectedCreatorVideo) handleVideoEnded();
+              }}
               onCanPlay={handleVideoCanPlay}
               onTimeUpdate={(e) => {
                 const video = e.currentTarget;
-                if (video.duration && video.currentTime >= video.duration - 0.4 && !isTransitioning) {
+                if (!selectedCreatorVideo && video.duration && video.currentTime >= video.duration - 0.4 && !isTransitioning) {
                   handleVideoEnded();
                 }
               }}
               style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
             >
-              <source src={displayEpisode?.video_url || ''} type="video/mp4" />
+              <source src={selectedCreatorVideo?.videoUrl || displayEpisode?.video_url || ''} />
               Your browser does not support the video tag.
             </video>
           </div>
@@ -224,10 +297,10 @@ export const App = () => {
             textShadow: '0 1px 4px rgba(0,0,0,0.8)'
           }}>
             <h2 style={{ margin: '0 0 4px 0', fontSize: '18px', fontWeight: 700, color: '#fff' }}>
-              Shadows: Deep waters — Ep. {displayEpisode?.episode_number || currentEpisode}
+              {selectedCreatorVideo?.title || `Shadows: Deep waters — Ep. ${displayEpisode?.episode_number || currentEpisode}`}
             </h2>
             <p style={{ margin: 0, fontSize: '12px', color: '#e0e0e0', lineHeight: 1.3 }}>
-              Dark secrets emerge as strange tides sweep across the quiet coastal village.
+              {selectedCreatorVideo ? 'A Revela creator video' : 'Dark secrets emerge as strange tides sweep across the quiet coastal village.'}
             </p>
           </div>
         )}
@@ -235,12 +308,19 @@ export const App = () => {
         {/* Floating Social Features & Episode Button on Middle Right */}
         {hasStarted && (
           <VideoSocialFeatures 
-            videoId={String(currentEpisode)} 
+            videoId={selectedCreatorVideo?.id || String(currentEpisode)}
             onOpenEpisodes={() => setShowEpisodeModal(true)}
             onRequireRegistration={handleRequireRegistration}
           />
         )}
 
+        <button
+          type="button"
+          className="admin-nav-button admin-live-videos-button"
+          onClick={() => setAdminView('library')}
+        >
+          Live videos
+        </button>
         <button
           type="button"
           className="admin-nav-button"
@@ -255,6 +335,11 @@ export const App = () => {
           view={adminView}
           adminUser={adminUser}
           onNavigate={setAdminView}
+          onPlayVideo={(video) => {
+            setSelectedCreatorVideo(video);
+            setHasStarted(true);
+            setAdminView('player');
+          }}
           onAdminCreated={(user) => {
             setAdminUser(user);
             setAdminView('profile');
