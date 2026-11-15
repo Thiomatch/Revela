@@ -38,7 +38,6 @@ export const App = () => {
   const posterUrl = supabase.storage.from('videos').getPublicUrl('image.Shadows.S1.png').data.publicUrl;
 
   useEffect(() => {
-    // Initialize OneSignal Push Notifications
     const initOneSignal = async () => {
       try {
         await OneSignal.initialize("9601f063-b605-46de-a8ad-a6ec259a8be6");
@@ -143,7 +142,6 @@ export const App = () => {
     setShowEpisodeModal(false);
   };
 
-  // Ask the browser/Android WebView to start the currently loaded episode.
   const attemptAutoplay = async (video: HTMLVideoElement) => {
     try {
       await video.play();
@@ -152,7 +150,6 @@ export const App = () => {
     }
   };
 
-  // Run whenever a new episode URL is rendered after playback has started.
   useEffect(() => {
     const video = videoRef.current;
     if (video && displayEpisode?.video_url && hasStarted) {
@@ -169,9 +166,8 @@ export const App = () => {
     }
   }, [adminView, hasStarted]);
 
-  // Triggered when an episode finishes. Select the next available episode number.
   const handleVideoEnded = () => {
-    if (isTransitioning) return; // Prevent duplicate triggers
+    if (isTransitioning) return;
 
     const foundNextEp = episodes
       .filter((ep) => Number(ep.episode_number) > currentEpisode)
@@ -210,7 +206,7 @@ export const App = () => {
       {/* Fullscreen Video Frame Container */}
       <div className="video-frame video-transition-container" style={{ display: adminView === 'player' ? 'block' : 'none', width: '100%', height: '100%', position: 'relative', background: '#000', overflow: 'hidden' }}>
         
-        {/* Click-to-Watch Movie Poster Overlay (Shown on App Startup) */}
+        {/* Click-to-Watch Movie Poster Overlay */}
         {!hasStarted ? (
           <div 
             onClick={() => setHasStarted(true)}
@@ -256,7 +252,6 @@ export const App = () => {
             </div>
           </div>
         ) : (
-          /* Video Player mounts fresh and displays poster while loading */
           <div className={`episode-slide-wrapper ${isTransitioning ? 'slide-enter-active' : 'slide-enter'}`} style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}>
             <video
               ref={videoRef}
@@ -285,7 +280,7 @@ export const App = () => {
           </div>
         )}
 
-        {/* Bottom-Left Movie Title & Synopsis Overlay (Shown during playback) */}
+        {/* Bottom-Left Movie Title & Synopsis Overlay */}
         {hasStarted && (
           <div style={{
             position: 'absolute',
@@ -305,7 +300,7 @@ export const App = () => {
           </div>
         )}
 
-        {/* Floating Social Features & Episode Button on Middle Right */}
+        {/* Floating Social Features & Episode Button */}
         {hasStarted && (
           <VideoSocialFeatures 
             videoId={selectedCreatorVideo?.id || String(currentEpisode)}
@@ -321,13 +316,73 @@ export const App = () => {
         >
           Live videos
         </button>
-        <button
-          type="button"
-          className="admin-nav-button"
-          onClick={() => setAdminView(adminUser ? 'profile' : 'rules')}
-        >
-          {adminUser ? 'Administrative Profile' : 'Administrative User'}
-        </button>
+
+        {/* Top-Right Authentication or "ME" Profile Badge Container */}
+        {adminUser ? (
+          <div
+            onClick={() => setAdminView('profile')}
+            style={{
+              position: 'absolute',
+              top: '18px',
+              right: '18px',
+              zIndex: 45,
+              cursor: 'pointer',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              background: 'rgba(15, 15, 16, 0.86)',
+              border: '1px solid rgba(255, 255, 255, 0.28)',
+              borderRadius: '12px',
+              padding: '4px 8px',
+              backdropFilter: 'blur(12px)'
+            }}
+          >
+            <img 
+              src={adminUser.avatar} 
+              alt="Profile" 
+              style={{ width: '26px', height: '26px', borderRadius: '50%', objectFit: 'cover' }} 
+            />
+            <span style={{ fontSize: '9px', fontWeight: 'bold', color: '#fff', marginTop: '2px', letterSpacing: '0.05em' }}>
+              ME
+            </span>
+          </div>
+        ) : (
+          <div 
+            style={{
+              position: 'absolute',
+              top: '18px',
+              right: '18px',
+              zIndex: 45,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              background: 'rgba(15, 15, 16, 0.86)',
+              border: '1px solid rgba(255, 255, 255, 0.28)',
+              borderRadius: '999px',
+              padding: '8px 14px',
+              backdropFilter: 'blur(12px)',
+              fontSize: '0.82rem',
+              fontWeight: 650,
+              color: '#fff'
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => setAdminView('rules')}
+              style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: 0, font: 'inherit' }}
+            >
+              Log in
+            </button>
+            <span style={{ color: '#888' }}>or</span>
+            <button
+              type="button"
+              onClick={() => setAdminView('signup')}
+              style={{ background: 'none', border: 'none', color: '#ff656e', cursor: 'pointer', padding: 0, font: 'inherit' }}
+            >
+              Sign up
+            </button>
+          </div>
+        )}
       </div>
 
       {adminView !== 'player' && (

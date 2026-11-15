@@ -1823,3 +1823,96 @@ body {
     transition: none;
   }
 }
+
+/* =========================
+   LIKE BUTTON +1 FLASH ANIMATION
+========================= */
+@keyframes fadeInOut {
+  0% {
+    opacity: 0;
+    transform: translateY(6px) scale(0.8);
+  }
+  20% {
+    opacity: 1;
+    transform: translateY(0) scale(1.1);
+  }
+  80% {
+    opacity: 1;
+    transform: translateY(-6px) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-12px) scale(0.9);
+  }
+}
+
+/* =========================
+   TOP-RIGHT AUTH PILL & "ME" BADGE
+========================= */
+.top-right-auth-pill {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  z-index: 45;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(15, 15, 16, 0.86);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 999px;
+  padding: 8px 14px;
+  backdrop-filter: blur(12px);
+  font-size: 0.82rem;
+  font-weight: 650;
+  color: #fff;
+}
+
+.top-right-me-badge {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  z-index: 45;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: rgba(15, 15, 16, 0.86);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 12px;
+  padding: 4px 8px;
+  backdrop-filter: blur(12px);
+  transition: transform 150ms ease, border-color 150ms ease;
+}
+
+.top-right-me-badge:hover {
+  border-color: #e50914;
+  transform: translateY(-1px);
+}
+
+.top-right-me-badge img {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.top-right-me-badge span {
+  font-size: 9px;
+  font-weight: 800;
+  color: #fff;
+  margin-top: 2px;
+  letter-spacing: 0.05em;
+}
+
+@media (max-width: 520px) {
+  .top-right-auth-pill,
+  .top-right-me-badge {
+    top: 12px;
+    right: 12px;
+  }
+
+  .top-right-auth-pill {
+    padding: 6px 11px;
+    font-size: 0.74rem;
+  }
+}
