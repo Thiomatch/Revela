@@ -15,11 +15,14 @@ import { supabase } from './supabaseClient';
 export type AdminPortalView = 'player' | 'rules' | 'signup' | 'profile' | 'library';
 
 type AdministrativePortalProps = {
-  view: AdminPortalView;
-  adminUser: AdminUser | null;
-  onNavigate: (view: AdminPortalView) => void;
-  onAdminCreated: (user: AdminUser) => void;
-  onPlayVideo: (video: AdminVideo) => void;
+  view?: AdminPortalView;
+  adminUser?: any;
+  onNavigate?: (view: AdminPortalView) => void;
+  onAdminCreated?: (user: any) => void;
+  onPlayVideo?: (video: any) => void;
+  user?: any;
+  onClose?: () => void;
+  onRequireLogin?: () => void;
 };
 
 const uploadLimitBytes = 250 * 1024 * 1024;
