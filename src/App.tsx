@@ -204,8 +204,7 @@ export default function App() {
         {/* MAIN VIEWPORT */}
         {showAdminPortal ? (
           <AdministrativePortal 
-            onClose={() => setShowAdminPortal(false)} 
-            onRequireLogin={() => setShowAuthModal(true)} 
+            user={user} 
           />
         ) : selectedDrama ? (
           /* VIDEO PLAYER / PLAYER VIEW WITH WORKING EPISODES & SHARE */
