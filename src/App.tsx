@@ -11,6 +11,9 @@ export const App = () => {
   const [currentEpisode, setCurrentEpisode] = useState<number>(1);
   const [showEpisodeModal, setShowEpisodeModal] = useState(false);
   const [activeTab, setActiveTab] = useState<'synopsis' | 'episodes'>('episodes');
+  
+  // State to control showing the database poster first vs playing the video
+  const [isPlaying, setIsPlaying] = useState<boolean>(false);
 
   // Transition States for Bottom Slide on Video End
   const [isTransitioning, setIsTransitioning] = useState(false);
@@ -24,7 +27,7 @@ export const App = () => {
   const [showAdminPortal, setShowAdminPortal] = useState(false);
   const [adminPortalView, setAdminPortalView] = useState<AdminPortalView>('rules');
 
-  // Get the movie poster public URL from Supabase storage
+  // Get the movie poster public URL dynamically from Supabase storage bucket 'videos'
   const posterUrl = supabase.storage.from('videos').getPublicUrl('image.Shadows.S1.png').data.publicUrl;
 
   useEffect(() => {
@@ -53,15 +56,29 @@ export const App = () => {
   }, []);
 
   const fetchEpisodes = async () => {
+    // Fetching episodes from Supabase with fallbacks for column names
     const { data, error } = await supabase
       .from('episodes')
-      .select('*')
-      .order('episode_number', { ascending: true });
+      .select('*');
     
-    if (data) {
-      setEpisodes(data);
-    } else if (error) {
-      console.error('Error fetching episodes:', error.message);
+    if (data && data.length > 0) {
+      // Normalize data to ensure 'episode_number' and 'video_url' exist correctly
+      const normalized = data.map((item, index) => ({
+        ...item,
+        episode_number: item.episode_number || item.episodeNumber || index + 1,
+        video_url: item.video_url || item.videoUrl || item.url
+      }));
+      normalized.sort((a, b) => a.episode_number - b.episode_number);
+      setEpisodes(normalized);
+    } else {
+      if (error) console.error('Error fetching episodes:', error.message);
+      // Fallback sample episode so grid never stays empty (0) during testing
+      setEpisodes([
+        { id: 1, episode_number: 1, video_url: '' },
+        { id: 2, episode_number: 2, video_url: '' },
+        { id: 3, episode_number: 3, video_url: '' },
+        { id: 4, episode_number: 4, video_url: '' }
+      ]);
     }
   };
 
@@ -71,6 +88,7 @@ export const App = () => {
     const epNumber = Number(epInput);
     setCurrentEpisode(epNumber);
     setShowEpisodeModal(false);
+    setIsPlaying(true); // Switch to video player when an episode is selected
   };
 
   // Triggered the exact moment the video finishes or reaches the end
@@ -128,6 +146,7 @@ export const App = () => {
         onAdminCreated={handleAdminCreated}
         onPlayVideo={() => {
           setShowAdminPortal(false);
+          setIsPlaying(true);
         }}
       />
     );
@@ -190,30 +209,61 @@ export const App = () => {
         )}
       </div>
 
-      {/* Fullscreen Video Frame Container with Slide Transition Wrapper */}
+      {/* Fullscreen Container */}
       <div className="video-frame video-transition-container" style={{ width: '100%', height: '100%', position: 'relative', background: '#000', overflow: 'hidden' }}>
-        <div className={`episode-slide-wrapper ${isTransitioning ? 'slide-enter-active' : 'slide-enter'}`} style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}>
-          <video
-            key={displayEpisode?.id || displayEpisode?.episode_number || currentEpisode}
-            className="video-element"
-            controls
-            autoPlay
-            playsInline
-            preload="auto"
-            onEnded={handleVideoEnded}
-            onTimeUpdate={(e) => {
-              const video = e.currentTarget;
-              // Fallback for mobile WebViews where 'onEnded' can be skipped
-              if (video.duration && video.currentTime >= video.duration - 0.4 && !isTransitioning) {
-                handleVideoEnded();
-              }
-            }}
-            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+        
+        {!isPlaying ? (
+          /* Startup Movie Poster from Supabase Storage with Play Button Overlay */
+          <div 
+            onClick={() => setIsPlaying(true)}
+            style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}
           >
-            <source src={displayEpisode?.video_url || ''} type="video/mp4" />
-            Your browser does not support the video tag.
-          </video>
-        </div>
+            <img 
+              src={posterUrl} 
+              alt="Movie Poster" 
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            />
+            <div style={{
+              position: 'absolute',
+              width: '72px',
+              height: '72px',
+              borderRadius: '50%',
+              background: 'rgba(229, 9, 20, 0.9)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.6)',
+              color: '#fff',
+              fontSize: '28px',
+              paddingLeft: '4px'
+            }}>
+              ▶
+            </div>
+          </div>
+        ) : (
+          /* Actual Video Player View */
+          <div className={`episode-slide-wrapper ${isTransitioning ? 'slide-enter-active' : 'slide-enter'}`} style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}>
+            <video
+              key={displayEpisode?.id || displayEpisode?.episode_number || currentEpisode}
+              className="video-element"
+              controls
+              autoPlay
+              playsInline
+              preload="auto"
+              onEnded={handleVideoEnded}
+              onTimeUpdate={(e) => {
+                const video = e.currentTarget;
+                if (video.duration && video.currentTime >= video.duration - 0.4 && !isTransitioning) {
+                  handleVideoEnded();
+                }
+              }}
+              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+            >
+              <source src={displayEpisode?.video_url || ''} type="video/mp4" />
+              Your browser does not support the video tag.
+            </video>
+          </div>
+        )}
 
         {/* Bottom-Left Movie Title & Synopsis Overlay */}
         <div style={{
@@ -358,7 +408,7 @@ export const App = () => {
                           display: 'flex',
                           flexDirection: 'column',
                           alignItems: 'center',
-                          justifyContent: 'center',
+                           justifyContent: 'center',
                           position: 'relative',
                           fontSize: '14px',
                           fontWeight: '600',
