@@ -16,10 +16,10 @@ export type AdminPortalView = 'player' | 'rules' | 'signup' | 'profile' | 'libra
 
 type AdministrativePortalProps = {
   view?: AdminPortalView;
-  adminUser?: any;
+  adminUser?: AdminUser | null;
   onNavigate?: (view: AdminPortalView) => void;
-  onAdminCreated?: (user: any) => void;
-  onPlayVideo?: (video: any) => void;
+  onAdminCreated?: (user: AdminUser) => void;
+  onPlayVideo?: (video: AdminVideo) => void;
   user?: any;
   onClose?: () => void;
   onRequireLogin?: () => void;
@@ -38,11 +38,11 @@ function formatDate(value: string): string {
 }
 
 export default function AdministrativePortal({
-  view,
-  adminUser,
-  onNavigate,
-  onAdminCreated,
-  onPlayVideo,
+  view = 'rules',
+  adminUser = null,
+  onNavigate = () => {},
+  onAdminCreated = () => {},
+  onPlayVideo = () => {},
 }: AdministrativePortalProps) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -52,14 +52,14 @@ export default function AdministrativePortal({
   const [avatarPreview, setAvatarPreview] = useState('');
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [rulesAccepted, setRulesAccepted] = useState(false);
-  const [, setIsLoginMode] = useState(false); // Default toggle based on entry
+  const [, setIsLoginMode] = useState(false);
   const [videoTitle, setVideoTitle] = useState('');
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [videos, setVideos] = useState<AdminVideo[]>([]);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [refreshVersion, setRefreshVersion] = useState(0);
+  const [, setRefreshVersion] = useState(0);
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -93,7 +93,7 @@ export default function AdministrativePortal({
       unsubscribe();
       window.clearInterval(refreshTimer);
     };
-  }, [adminUser, view, refreshVersion]);
+  }, [adminUser, view]);
 
   const handleAvatarChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.currentTarget.files?.[0];
@@ -190,7 +190,7 @@ export default function AdministrativePortal({
       });
       setSuccessMessage('Successful! Welcome back.');
       onAdminCreated(user);
-    } catch (error) {
+    } catch {
       setErrorMessage('email or password not recognized');
     } finally {
       setIsSubmitting(false);
