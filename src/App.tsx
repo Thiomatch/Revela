@@ -37,7 +37,8 @@ export default function App() {
   const [authPassword, setAuthPassword] = useState<string>('');
   const [authName, setAuthName] = useState<string>('');
   const [authLocation, setAuthLocation] = useState<string>('');
-  const [authPic, setAuthPic] = useState<string>('https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80');
+  const [authPic] = useState<string>('https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80');
+  const [_setAuthPic] = useState<string>('https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80');
   const [showAdminPortal, setShowAdminPortal] = useState<boolean>(false);
 
   // Video Player UI States
@@ -203,7 +204,6 @@ export default function App() {
         {/* MAIN VIEWPORT */}
         {showAdminPortal ? (
           <AdministrativePortal 
-            user={user} 
             onClose={() => setShowAdminPortal(false)} 
             onRequireLogin={() => setShowAuthModal(true)} 
           />
@@ -361,7 +361,7 @@ export default function App() {
                 <div style={{ padding: '12px 16px 80px 16px' }}>
                   <h3 style={{ fontSize: '1rem', fontWeight: 'bold', marginBottom: '12px', color: '#fff' }}>Popular Dramas</h3>
                   <div className="drama-grid">
-                    {dramas.filter(d => selectedCategory === 'All' || d.category === koreanMatchCase(selectedCategory)).map((drama) => (
+                    {dramas.filter(d => selectedCategory === 'All' || d.category === selectedCategory).map((drama) => (
                       <div 
                         key={drama.id} 
                         className="drama-card"
@@ -517,8 +517,4 @@ export default function App() {
       </div>
     </div>
   );
-}
-
-function koreanMatchCase(cat: string) {
-  return cat;
 }
