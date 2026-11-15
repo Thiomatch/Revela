@@ -27,22 +27,11 @@ type AdministrativePortalProps = {
 
 const uploadLimitBytes = 250 * 1024 * 1024;
 
-function formatFileSize(bytes: number): string {
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-function formatDate(value: string): string {
-  return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(
-    new Date(value),
-  );
-}
-
 export default function AdministrativePortal({
   view = 'rules',
   adminUser = null,
   onNavigate = () => {},
   onAdminCreated = () => {},
-  onPlayVideo = () => {},
 }: AdministrativePortalProps) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -55,7 +44,7 @@ export default function AdministrativePortal({
   const [, setIsLoginMode] = useState(false);
   const [videoTitle, setVideoTitle] = useState('');
   const [videoFile, setVideoFile] = useState<File | null>(null);
-  const [videos, setVideos] = useState<AdminVideo[]>([]);
+  const [, setVideos] = useState<AdminVideo[]>([]);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
