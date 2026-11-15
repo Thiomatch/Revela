@@ -49,7 +49,7 @@ export default function AdministrativePortal({
   const [avatarPreview, setAvatarPreview] = useState('');
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [rulesAccepted, setRulesAccepted] = useState(false);
-  const [isLoginMode, setIsLoginMode] = useState(view === 'rules'); // Default toggle based on entry
+  const [, setIsLoginMode] = useState(false); // Default toggle based on entry
   const [videoTitle, setVideoTitle] = useState('');
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [videos, setVideos] = useState<AdminVideo[]>([]);

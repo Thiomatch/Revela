@@ -1,15 +1,13 @@
 import { useState } from 'react';
 
 type VideoSocialFeaturesProps = {
-  videoId: string;
+  _videoId: string;
   onOpenEpisodes: () => void;
-  onRequireRegistration: () => void;
+  _onRequireRegistration: () => void;
 };
 
 export default function VideoSocialFeatures({
-  videoId,
   onOpenEpisodes,
-  onRequireRegistration,
 }: VideoSocialFeaturesProps) {
   const [likesCount, setLikesCount] = useState<number>(0);
   const [hasLiked, setHasLiked] = useState<boolean>(false);
@@ -21,12 +19,11 @@ export default function VideoSocialFeatures({
       setHasLiked(true);
       setShowPlusOne(true);
 
-      // Flash "1" or "+1" and revert/fade back after 1 second
+      // Flash "1" and revert/fade back after 1 second
       setTimeout(() => {
         setShowPlusOne(false);
       }, 1000);
     } else {
-      // Optional: allow unliking
       setLikesCount(prev => Math.max(0, prev - 1));
       setHasLiked(false);
     }
