@@ -1,13 +1,15 @@
 import { useState } from 'react';
 
 type VideoSocialFeaturesProps = {
-  _videoId: string;
+  videoId: string;
   onOpenEpisodes: () => void;
-  _onRequireRegistration: () => void;
+  onRequireRegistration: () => void;
 };
 
 export default function VideoSocialFeatures({
+  videoId: _videoId,
   onOpenEpisodes,
+  onRequireRegistration: _onRequireRegistration,
 }: VideoSocialFeaturesProps) {
   const [likesCount, setLikesCount] = useState<number>(0);
   const [hasLiked, setHasLiked] = useState<boolean>(false);
