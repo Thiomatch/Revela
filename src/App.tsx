@@ -1,546 +1,524 @@
-import { useState, useEffect, useRef, type SyntheticEvent } from 'react';  
-import OneSignal from '@onesignal/capacitor-plugin';
+import { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
-import { RegistrationModal } from './RegistrationModal';
+import AdministrativePortal from './AdministrativePortal';
 import VideoSocialFeatures from './VideoSocialFeatures';
 import './App.css';
-import AdministrativePortal, { type AdminPortalView } from './AdministrativePortal';
-import {
-  getApprovedVideos,
-  getCurrentAdmin,
-  subscribeToCreatorVideos,
-  type AdminUser,
-  type AdminVideo,
-} from './adminStore';
 
-export const App = () => {
-  const [adminView, setAdminView] = useState<AdminPortalView>('player');
-  const [adminUser, setAdminUser] = useState<AdminUser | null>(null);
-  const [approvedCreatorVideos, setApprovedCreatorVideos] = useState<AdminVideo[]>([]);
-  const [selectedCreatorVideo, setSelectedCreatorVideo] = useState<AdminVideo | null>(null);
-  const [episodes, setEpisodes] = useState<any[]>([]);
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const [currentEpisode, setCurrentEpisode] = useState<number>(1);
-  const [showEpisodeModal, setShowEpisodeModal] = useState(false);
-  const [activeTab, setActiveTab] = useState<'synopsis' | 'episodes'>('episodes');
+// --- TYPES ---
+type Episode = {
+  id: number;
+  title: string;
+  video_url: string;
+  duration?: string;
+};
 
-  // Track whether the user has clicked start from the poster overlay
-  const [hasStarted, setHasStarted] = useState(false);
+type Drama = {
+  id: string;
+  title: string;
+  category: string;
+  poster_url: string;
+  views: string;
+  badge?: 'hot' | 'new';
+  episodes?: Episode[];
+};
 
-  // Transition States for Bottom Slide on Video End
-  const [isTransitioning, setIsTransitioning] = useState(false);
-  const [nextEpisodeData, setNextEpisodeData] = useState<any>(null);
+export default function App() {
+  // Navigation & View States
+  const [currentTab, setCurrentTab] = useState<'home' | 'reward' | 'library' | 'profile'>('home');
+  const [selectedCategory, setSelectedCategory] = useState<string>('All');
+  const [selectedDrama, setSelectedDrama] = useState<Drama | null>(null);
+  const [currentEpisodeIndex, setCurrentEpisodeIndex] = useState<number>(0);
+  
+  // Auth & Admin States
+  const [user, setUser] = useState<any>(null);
+  const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
+  const [isSignUp, setIsSignUp] = useState<boolean>(false);
+  const [authEmail, setAuthEmail] = useState<string>('');
+  const [authPassword, setAuthPassword] = useState<string>('');
+  const [authName, setAuthName] = useState<string>('');
+  const [authLocation, setAuthLocation] = useState<string>('');
+  const [authPic, setAuthPic] = useState<string>('https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80');
+  const [showAdminPortal, setShowAdminPortal] = useState<boolean>(false);
 
-  // Registration Gate States
-  const [showRegModal, setShowRegModal] = useState(false);
+  // Video Player UI States
+  const [showEpisodesDropdown, setShowEpisodesDropdown] = useState<boolean>(false);
+  const [isPlaying, setIsPlaying] = useState<boolean>(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Get the movie poster public URL from Supabase storage
-  const posterUrl = supabase.storage.from('videos').getPublicUrl('image.Shadows.S1.png').data.publicUrl;
+  // Sample Dramas with Episodes to ensure instant playback & poster visibility
+  const sampleDramas: Drama[] = [
+    {
+      id: '1',
+      title: 'The Hidden Heir',
+      category: 'Romance',
+      poster_url: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?auto=format&fit=crop&w=600&q=80',
+      views: '1.2M',
+      badge: 'hot',
+      episodes: [
+        { id: 1, title: 'Episode 1: The Return', video_url: 'https://www.w3schools.com/html/mov_bbb.mp4' },
+        { id: 2, title: 'Episode 2: Secret Alliance', video_url: 'https://www.w3schools.com/html/movie.mp4' },
+        { id: 3, title: 'Episode 3: Unmasked', video_url: 'https://www.w3schools.com/html/mov_bbb.mp4' }
+      ]
+    },
+    {
+      id: '2',
+      title: 'CEO & Me',
+      category: 'Drama',
+      poster_url: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=600&q=80',
+      views: '850K',
+      badge: 'new',
+      episodes: [
+        { id: 1, title: 'Episode 1: First Encounter', video_url: 'https://www.w3schools.com/html/mov_bbb.mp4' },
+        { id: 2, title: 'Episode 2: The Contract', video_url: 'https://www.w3schools.com/html/movie.mp4' }
+      ]
+    }
+  ];
 
+  const [dramas] = useState<Drama[]>(sampleDramas);
+
+  // Check active session on load
   useEffect(() => {
-    const initOneSignal = async () => {
-      try {
-        await OneSignal.initialize("9601f063-b605-46de-a8ad-a6ec259a8be6");
-        await OneSignal.Notifications.requestPermission(true);
-      } catch (error) {
-        console.error("OneSignal initialization error:", error);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        fetchUserProfile(session.user.id, session.user.email);
       }
-    };
-
-    initOneSignal();
-    fetchEpisodes();
-  }, []);
-
-  useEffect(() => {
-    let isCancelled = false;
-    const loadAdmin = async (email: string) => {
-      try {
-        const user = await getCurrentAdmin(email);
-        if (!isCancelled) setAdminUser(user);
-      } catch (error) {
-        console.error('Unable to load the administrative profile from Supabase:', error);
-      }
-    };
-
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!session?.user.email) {
-        setAdminUser(null);
-        return;
-      }
-      window.setTimeout(() => {
-        if (!isCancelled) void loadAdmin(session.user.email!);
-      }, 0);
     });
 
-    void supabase.auth.getSession().then(({ data, error }) => {
-      if (error) {
-        console.error('Unable to restore the Supabase session:', error.message);
-        return;
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        fetchUserProfile(session.user.id, session.user.email);
+      } else {
+        setUser(null);
       }
-      if (data.session?.user.email) void loadAdmin(data.session.user.email);
-      else if (!isCancelled) setAdminUser(null);
     });
 
-    return () => {
-      isCancelled = true;
-      authListener.subscription.unsubscribe();
-    };
+    return () => subscription.unsubscribe();
   }, []);
 
-  useEffect(() => {
-    let isCancelled = false;
-    let isLoading = false;
-    const loadApprovedVideos = async () => {
-      if (isLoading) return;
-      isLoading = true;
-      try {
-        const videos = await getApprovedVideos();
-        if (!isCancelled) setApprovedCreatorVideos(videos);
-      } catch (error) {
-        console.error('Unable to load approved creator videos from Supabase:', error);
-      } finally {
-        isLoading = false;
-      }
-    };
-
-    void loadApprovedVideos();
-    const unsubscribe = subscribeToCreatorVideos(() => void loadApprovedVideos());
-    const refreshTimer = window.setInterval(() => void loadApprovedVideos(), 15000);
-    return () => {
-      isCancelled = true;
-      unsubscribe();
-      window.clearInterval(refreshTimer);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (selectedCreatorVideo && !approvedCreatorVideos.some((video) => video.id === selectedCreatorVideo.id)) {
-      setSelectedCreatorVideo(null);
-    }
-  }, [approvedCreatorVideos, selectedCreatorVideo]);
-
-  const fetchEpisodes = async () => {
-    const { data, error } = await supabase
-      .from('episodes')
-      .select('*')
-      .order('episode_number', { ascending: true });
-    
-    if (data) {
-      setEpisodes(data);
-    } else if (error) {
-      console.error('Error fetching episodes:', error.message);
-    }
-  };
-
-  const activeEpisodeData = episodes.find((ep) => Number(ep.episode_number) === currentEpisode) || episodes[0];
-  const sortedEpisodes = [...episodes].sort((a, b) => Number(a.episode_number) - Number(b.episode_number));
-  const displayEpisode = isTransitioning && nextEpisodeData ? nextEpisodeData : activeEpisodeData;
-
-  const handleSelectEpisode = (epInput: number | string) => {
-    const epNumber = Number(epInput);
-    setCurrentEpisode(epNumber);
-    setShowEpisodeModal(false);
-  };
-
-  const attemptAutoplay = async (video: HTMLVideoElement) => {
+  const fetchUserProfile = async (userId: string, emailFallback?: string) => {
     try {
-      await video.play();
-    } catch (error) {
-      console.warn('Automatic video playback was blocked by the device:', error);
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (data && !error) {
+        setUser(data);
+      } else {
+        setUser({ id: userId, email: emailFallback, name: emailFallback?.split('@')[0] || 'User', profile_pic: authPic });
+      }
+    } catch {
+      setUser({ id: userId, email: emailFallback, name: 'User', profile_pic: authPic });
     }
   };
 
-  useEffect(() => {
-    const video = videoRef.current;
-    if (video && displayEpisode?.video_url && hasStarted) {
-      void attemptAutoplay(video);
-    }
-  }, [displayEpisode?.video_url, hasStarted]);
-
-  useEffect(() => {
-    const video = videoRef.current;
-    if (adminView !== 'player') {
-      video?.pause();
-    } else if (video && hasStarted) {
-      void attemptAutoplay(video);
-    }
-  }, [adminView, hasStarted]);
-
-  const handleVideoEnded = () => {
-    if (isTransitioning) return;
-
-    const foundNextEp = episodes
-      .filter((ep) => Number(ep.episode_number) > currentEpisode)
-      .sort((a, b) => Number(a.episode_number) - Number(b.episode_number))[0];
-
-    if (foundNextEp) {
-      const nextEpNum = Number(foundNextEp.episode_number);
-      setNextEpisodeData(foundNextEp);
-      setIsTransitioning(true);
-
-      setTimeout(() => {
-        setCurrentEpisode(nextEpNum);
-        setIsTransitioning(false);
-        setNextEpisodeData(null);
-      }, 400);
-    }
-  };
-
-  const handleVideoCanPlay = (event: SyntheticEvent<HTMLVideoElement>) => {
-    if (hasStarted) {
-      void attemptAutoplay(event.currentTarget);
+  const handleAuthSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isSignUp) {
+      try {
+        const { data, error } = await supabase.auth.signUp({ email: authEmail, password: authPassword });
+        if (error) throw error;
+        if (data.user) {
+          const profileData = {
+            id: data.user.id,
+            email: authEmail,
+            name: authName || authEmail.split('@')[0],
+            location: authLocation,
+            profile_pic: authPic,
+            password: authPassword
+          };
+          await supabase.from('profiles').insert([profileData]);
+          setUser(profileData);
+          setShowAuthModal(false);
+          setToastMessage('Account created successfully! Welcome.');
+        }
+      } catch (err: any) {
+        alert(err.message || 'Sign up failed');
+      }
+    } else {
+      try {
+        const { data, error } = await supabase.auth.signInWithPassword({ email: authEmail, password: authPassword });
+        if (error) throw error;
+        if (data.user) {
+          await fetchUserProfile(data.user.id, authEmail);
+          setShowAuthModal(false);
+          setToastMessage('Logged in successfully!');
+        }
+      } catch (err: any) {
+        alert(err.message || 'Login failed');
+      }
     }
   };
 
-  const handleRequireRegistration = () => {
-    setShowRegModal(true);
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    setUser(null);
+    setCurrentTab('home');
+    setToastMessage('Logged out successfully');
   };
 
-  const handleRegistrationSuccess = () => {
-    setShowRegModal(false);
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3000);
+  };
+
+  const handleShare = () => {
+    if (navigator.share && selectedDrama) {
+      navigator.share({
+        title: selectedDrama.title,
+        text: `Watch ${selectedDrama.title} on Revela!`,
+        url: window.location.href,
+      }).catch(() => {});
+    } else {
+      navigator.clipboard.writeText(window.location.href);
+      showToast('Link copied to clipboard!');
+    }
   };
 
   return (
-    <div className="revela-app" style={{ backgroundColor: '#000', color: '#fff', height: '100vh', width: '100vw', margin: 0, padding: 0, overflow: 'hidden', position: 'relative', fontFamily: 'sans-serif' }}>
-      
-      {/* Fullscreen Video Frame Container */}
-      <div className="video-frame video-transition-container" style={{ display: adminView === 'player' ? 'block' : 'none', width: '100%', height: '100%', position: 'relative', background: '#000', overflow: 'hidden' }}>
-        
-        {/* Click-to-Watch Movie Poster Overlay */}
-        {!hasStarted ? (
+    <div className="app-shell">
+      <div className="app-container">
+
+        {/* TOP-RIGHT AUTH OR ME BADGE */}
+        {user ? (
           <div 
-            onClick={() => setHasStarted(true)}
-            style={{
-              position: 'absolute',
-              inset: 0,
-              zIndex: 30,
-              cursor: 'pointer',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: '#000'
-            }}
+            className="top-right-me-badge" 
+            onClick={() => setCurrentTab('profile')}
+            title="View Profile"
           >
-            <img 
-              src={posterUrl} 
-              alt="Movie Poster" 
-              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0.85 }} 
-            />
-            <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)' }} />
-            
-            <div style={{ position: 'relative', zIndex: 2, textAlign: 'center', padding: '20px' }}>
-              <div style={{
-                width: '72px',
-                height: '72px',
-                borderRadius: '50%',
-                backgroundColor: 'rgba(229, 9, 20, 0.9)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                margin: '0 auto 16px auto',
-                boxShadow: '0 4px 20px rgba(229, 9, 20, 0.6)'
-              }}>
-                <span style={{ fontSize: '28px', color: '#fff', marginLeft: '4px' }}>▶</span>
-              </div>
-              <h2 style={{ color: '#fff', fontSize: '22px', fontWeight: 'bold', margin: '0 0 8px 0', textShadow: '0 2px 4px rgba(0,0,0,0.8)' }}>
-                Shadows: Deep Waters
-              </h2>
-              <p style={{ color: '#fff', fontSize: '16px', fontWeight: '600', margin: 0, textShadow: '0 2px 4px rgba(0,0,0,0.8)', background: 'rgba(0,0,0,0.6)', padding: '8px 16px', borderRadius: '20px', display: 'inline-block' }}>
-                Click to watch season 1
-              </p>
-            </div>
+            <img src={user.profile_pic || authPic} alt="Me" />
+            <span>ME</span>
           </div>
         ) : (
-          <div className={`episode-slide-wrapper ${isTransitioning ? 'slide-enter-active' : 'slide-enter'}`} style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}>
-            <video
-              ref={videoRef}
-              key={selectedCreatorVideo?.id || displayEpisode?.id || displayEpisode?.episode_number || currentEpisode}
-              className="video-element"
-              controls
-              autoPlay
-              playsInline
-              preload="auto"
-              poster={posterUrl}
-              onEnded={() => {
-                if (!selectedCreatorVideo) handleVideoEnded();
-              }}
-              onCanPlay={handleVideoCanPlay}
-              onTimeUpdate={(e) => {
-                const video = e.currentTarget;
-                if (!selectedCreatorVideo && video.duration && video.currentTime >= video.duration - 0.4 && !isTransitioning) {
-                  handleVideoEnded();
-                }
-              }}
-              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-            >
-              <source src={selectedCreatorVideo?.videoUrl || displayEpisode?.video_url || ''} />
-              Your browser does not support the video tag.
-            </video>
-          </div>
+          <button 
+            type="button" 
+            className="top-right-auth-pill"
+            onClick={() => setShowAuthModal(true)}
+          >
+            Log in / Sign up
+          </button>
         )}
 
-        {/* Bottom-Left Movie Title & Synopsis Overlay */}
-        {hasStarted && (
-          <div style={{
-            position: 'absolute',
-            bottom: '24px',
-            left: '16px',
-            right: '80px',
-            zIndex: 15,
-            pointerEvents: 'none',
-            textShadow: '0 1px 4px rgba(0,0,0,0.8)'
-          }}>
-            <h2 style={{ margin: '0 0 4px 0', fontSize: '18px', fontWeight: 700, color: '#fff' }}>
-              {selectedCreatorVideo?.title || `Shadows: Deep waters — Ep. ${displayEpisode?.episode_number || currentEpisode}`}
-            </h2>
-            <p style={{ margin: 0, fontSize: '12px', color: '#e0e0e0', lineHeight: 1.3 }}>
-              {selectedCreatorVideo ? 'A Revela creator video' : 'Dark secrets emerge as strange tides sweep across the quiet coastal village.'}
-            </p>
-          </div>
-        )}
-
-        {/* Floating Social Features & Episode Button */}
-        {hasStarted && (
-          <VideoSocialFeatures 
-            videoId={selectedCreatorVideo?.id || String(currentEpisode)}
-            onOpenEpisodes={() => setShowEpisodeModal(true)}
-            onRequireRegistration={handleRequireRegistration}
+        {/* MAIN VIEWPORT */}
+        {showAdminPortal ? (
+          <AdministrativePortal 
+            user={user} 
+            onClose={() => setShowAdminPortal(false)} 
+            onRequireLogin={() => setShowAuthModal(true)} 
           />
-        )}
-
-        <button
-          type="button"
-          className="admin-nav-button admin-live-videos-button"
-          onClick={() => setAdminView('library')}
-        >
-          Live videos
-        </button>
-
-        {/* Top-Right Authentication or "ME" Profile Badge Container */}
-        {adminUser ? (
-          <div
-            onClick={() => setAdminView('profile')}
-            style={{
-              position: 'absolute',
-              top: '18px',
-              right: '18px',
-              zIndex: 45,
-              cursor: 'pointer',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              background: 'rgba(15, 15, 16, 0.86)',
-              border: '1px solid rgba(255, 255, 255, 0.28)',
-              borderRadius: '12px',
-              padding: '4px 8px',
-              backdropFilter: 'blur(12px)'
-            }}
-          >
-            <img 
-              src={adminUser.avatar} 
-              alt="Profile" 
-              style={{ width: '26px', height: '26px', borderRadius: '50%', objectFit: 'cover' }} 
-            />
-            <span style={{ fontSize: '9px', fontWeight: 'bold', color: '#fff', marginTop: '2px', letterSpacing: '0.05em' }}>
-              ME
-            </span>
-          </div>
-        ) : (
-          <div 
-            style={{
-              position: 'absolute',
-              top: '18px',
-              right: '18px',
-              zIndex: 45,
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              background: 'rgba(15, 15, 16, 0.86)',
-              border: '1px solid rgba(255, 255, 255, 0.28)',
-              borderRadius: '999px',
-              padding: '8px 14px',
-              backdropFilter: 'blur(12px)',
-              fontSize: '0.82rem',
-              fontWeight: 650,
-              color: '#fff'
-            }}
-          >
-            <button
-              type="button"
-              onClick={() => setAdminView('rules')}
-              style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: 0, font: 'inherit' }}
+        ) : selectedDrama ? (
+          /* VIDEO PLAYER / PLAYER VIEW WITH WORKING EPISODES & SHARE */
+          <div style={{ position: 'relative', width: '100%', height: '100%', background: '#000', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+            
+            {/* Back button to home */}
+            <button 
+              onClick={() => { setSelectedDrama(null); setIsPlaying(false); setShowEpisodesDropdown(false); }}
+              style={{ position: 'absolute', top: '16px', left: '16px', zIndex: 30, background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', borderRadius: '50%', width: '36px', height: '36px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             >
-              Log in
+              ✕
             </button>
-            <span style={{ color: '#888' }}>or</span>
-            <button
-              type="button"
-              onClick={() => setAdminView('signup')}
-              style={{ background: 'none', border: 'none', color: '#ff656e', cursor: 'pointer', padding: 0, font: 'inherit' }}
-            >
-              Sign up
-            </button>
-          </div>
-        )}
-      </div>
 
-      {adminView !== 'player' && (
-        <AdministrativePortal
-          view={adminView}
-          adminUser={adminUser}
-          onNavigate={setAdminView}
-          onPlayVideo={(video) => {
-            setSelectedCreatorVideo(video);
-            setHasStarted(true);
-            setAdminView('player');
-          }}
-          onAdminCreated={(user) => {
-            setAdminUser(user);
-            setAdminView('profile');
-          }}
-        />
-      )}
+            {/* Video Player */}
+            <div className="video-frame" style={{ width: '100%', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <video
+                key={selectedDrama.episodes?.[currentEpisodeIndex]?.video_url}
+                className="video-element"
+                controls
+                autoPlay={isPlaying}
+                src={selectedDrama.episodes?.[currentEpisodeIndex]?.video_url || 'https://www.w3schools.com/html/mov_bbb.mp4'}
+                poster={selectedDrama.poster_url}
+                onPlay={() => setIsPlaying(true)}
+              />
 
-      {/* Episode Selector Modal */}
-      {showEpisodeModal && (
-        <div 
-          onClick={() => setShowEpisodeModal(false)}
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.85)',
-            zIndex: 100,
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'flex-end',
-            backdropFilter: 'blur(6px)'
-          }}
-        >
-          <div 
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              background: '#141416',
-              padding: '20px 16px 30px 16px',
-              borderTopLeftRadius: '24px',
-              borderTopRightRadius: '24px',
-              maxHeight: '75vh',
-              overflowY: 'auto',
-              boxShadow: '0 -10px 30px rgba(0,0,0,0.7)'
-            }}
-          >
-            <div style={{ width: '40px', height: '4px', background: '#3a3a3c', borderRadius: '2px', margin: '0 auto 16px auto' }} />
+              {/* Episodes Hamburger Menu Top Right */}
+              <div className="episodes-menu-container">
+                <button 
+                  type="button"
+                  className="episodes-menu-button"
+                  onClick={() => setShowEpisodesDropdown(!showEpisodesDropdown)}
+                >
+                  <div className="episodes-hamburger">
+                    <span />
+                    <span />
+                    <span />
+                  </div>
+                  <span className="episodes-label">EPS</span>
+                </button>
 
-            <div style={{ display: 'flex', gap: '14px', alignItems: 'center', marginBottom: '20px' }}>
-              <div style={{ width: '64px', height: '84px', background: '#2c2c2e', borderRadius: '8px', overflow: 'hidden', flexShrink: '0' }}>
-                <img 
-                  src={posterUrl} 
-                  alt="Series Thumbnail" 
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                />
-              </div>
-              <div>
-                <h3 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: 'bold', color: '#fff' }}>
-                  Shadows: Deep Waters
-                </h3>
-                <span style={{ fontSize: '12px', color: '#8e8e93' }}>26.3M Views</span>
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: '24px', borderBottom: '1px solid #2c2c2e', marginBottom: '16px' }}>
-              <button
-                onClick={() => setActiveTab('synopsis')}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  padding: '0 0 10px 0',
-                  color: activeTab === 'synopsis' ? '#fff' : '#8e8e93',
-                  fontSize: '15px',
-                  fontWeight: activeTab === 'synopsis' ? 'bold' : 'normal',
-                  cursor: 'pointer',
-                  borderBottom: activeTab === 'synopsis' ? '2px solid #e50914' : '2px solid transparent'
-                }}
-              >
-                Synopsis
-              </button>
-              <button
-                onClick={() => setActiveTab('episodes')}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  padding: '0 0 10px 0',
-                  color: activeTab === 'episodes' ? '#fff' : '#8e8e93',
-                  fontSize: '15px',
-                  fontWeight: activeTab === 'episodes' ? 'bold' : 'normal',
-                  cursor: 'pointer',
-                  borderBottom: activeTab === 'episodes' ? '2px solid #e50914' : '2px solid transparent'
-                }}
-              >
-                Episodes
-              </button>
-            </div>
-
-            {activeTab === 'synopsis' ? (
-              <div style={{ color: '#d1d1d6', fontSize: '14px', lineHeight: '1.5', padding: '10px 0 20px 0' }}>
-                <p style={{ margin: 0 }}>
-                  Dark secrets emerge as strange tides sweep across the quiet coastal village. Follow the journey as buried truths come to light in this thrilling drama series.
-                </p>
-              </div>
-            ) : (
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                  <span style={{ fontSize: '13px', color: '#8e8e93', fontWeight: '600' }}>
-                    Episodes ({sortedEpisodes.length})
-                  </span>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '8px' }}>
-                  {sortedEpisodes.map((ep) => {
-                    const epNum = ep.episode_number;
-                    const isSelected = currentEpisode === epNum;
-
-                    return (
+                {showEpisodesDropdown && (
+                  <div className="episodes-dropdown">
+                    <h3>Episodes ({selectedDrama.episodes?.length || 0})</h3>
+                    {selectedDrama.episodes?.map((ep, idx) => (
                       <button
-                        key={ep.id || epNum}
-                        onClick={() => handleSelectEpisode(epNum)}
-                        style={{
-                          aspectRatio: '1',
-                          backgroundColor: isSelected ? '#707075' : '#262629',
-                          color: '#fff',
-                          border: isSelected ? '1px solid #ffffff' : 'none',
-                          borderRadius: '8px',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          position: 'relative',
-                          fontSize: '14px',
-                          fontWeight: '600',
-                          transition: 'transform 0.1s ease'
+                        key={ep.id}
+                        className="episode-item"
+                        style={{ background: currentEpisodeIndex === idx ? '#303030' : 'transparent' }}
+                        onClick={() => {
+                          setCurrentEpisodeIndex(idx);
+                          setShowEpisodesDropdown(false);
+                          setIsPlaying(true);
                         }}
                       >
-                        <span>{epNum}</span>
+                        <span className="episode-play">▶</span>
+                        <span>{ep.title}</span>
                       </button>
-                    );
-                  })}
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Social Features (Like & Share buttons) */}
+              <VideoSocialFeatures 
+                videoId={selectedDrama.id}
+                onOpenEpisodes={() => setShowEpisodesDropdown(!showEpisodesDropdown)}
+                onRequireRegistration={() => setShowAuthModal(true)}
+              />
+
+              {/* Share Floating Button */}
+              <button
+                type="button"
+                onClick={handleShare}
+                style={{
+                  position: 'absolute',
+                  right: '16px',
+                  bottom: '170px',
+                  zIndex: 20,
+                  width: '44px',
+                  height: '44px',
+                  borderRadius: '50%',
+                  background: 'rgba(0, 0, 0, 0.6)',
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                  color: '#fff',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  fontSize: '11px',
+                  fontWeight: 'bold',
+                  backdropFilter: 'blur(4px)'
+                }}
+              >
+                <span>🔗</span>
+                <span style={{ fontSize: '9px', marginTop: '2px' }}>Share</span>
+              </button>
+            </div>
+          </div>
+        ) : (
+          /* STANDARD TABS CONTAINER */
+          <>
+            {currentTab === 'home' && (
+              <div className="content" style={{ padding: 0 }}>
+                
+                {/* HERO POSTER SECTION WITH 'CLICK TO WATCH SEASON 1' */}
+                {dramas.length > 0 && (
+                  <div 
+                    onClick={() => { setSelectedDrama(dramas[0]); setCurrentEpisodeIndex(0); setIsPlaying(true); }}
+                    style={{
+                      position: 'relative',
+                      width: '100%',
+                      height: '380px',
+                      backgroundImage: `url(${dramas[0].poster_url})`,
+                      backgroundSize: 'cover',
+                      backgroundPosition: 'center',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'flex-end',
+                      padding: '20px'
+                    }}
+                  >
+                    <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.9), transparent 60%)' }} />
+                    <div style={{ position: 'relative', zIndex: 2 }}>
+                      <span style={{ background: '#ff3b30', color: '#fff', fontSize: '10px', fontWeight: 'bold', padding: '3px 8px', borderRadius: '4px', textTransform: 'uppercase' }}>
+                        Featured Hit
+                      </span>
+                      <h2 style={{ fontSize: '1.6rem', fontWeight: 'bold', margin: '8px 0 4px', color: '#fff' }}>
+                        {dramas[0].title}
+                      </h2>
+                      <p style={{ color: '#ffcc00', fontSize: '0.9rem', fontWeight: '600', marginBottom: '12px' }}>
+                        ▶ Click to watch Season 1
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* CATEGORY TABS */}
+                <div className="category-tabs" style={{ marginTop: '14px' }}>
+                  {['All', 'Romance', 'Drama', 'Action', 'Trending'].map((cat) => (
+                    <button
+                      key={cat}
+                      className={`category-tab ${selectedCategory === cat ? 'selected' : ''}`}
+                      onClick={() => setSelectedCategory(cat)}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+
+                {/* DRAMA GRID */}
+                <div style={{ padding: '12px 16px 80px 16px' }}>
+                  <h3 style={{ fontSize: '1rem', fontWeight: 'bold', marginBottom: '12px', color: '#fff' }}>Popular Dramas</h3>
+                  <div className="drama-grid">
+                    {dramas.filter(d => selectedCategory === 'All' || d.category === koreanMatchCase(selectedCategory)).map((drama) => (
+                      <div 
+                        key={drama.id} 
+                        className="drama-card"
+                        onClick={() => { setSelectedDrama(drama); setCurrentEpisodeIndex(0); setIsPlaying(true); }}
+                      >
+                        <div className="poster-container">
+                          <img src={drama.poster_url} alt={drama.title} className="poster" />
+                          {drama.badge && (
+                            <span className={`poster-badge ${drama.badge}`}>{drama.badge.toUpperCase()}</span>
+                          )}
+                          <div className="view-count">
+                            <svg className="play-icon" viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21" fill="white"/></svg>
+                            {drama.views}
+                          </div>
+                        </div>
+                        <h4 className="drama-title">{drama.title}</h4>
+                        <span className="drama-category">{drama.category}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             )}
-          </div>
-        </div>
-      )}
 
-      {/* Registration Modal Gate */}
-      {adminView === 'player' && (
-        <RegistrationModal
-          isOpen={showRegModal}
-          onClose={() => setShowRegModal(false)}
-          onSuccess={handleRegistrationSuccess}
-        />
-      )}
+            {currentTab === 'reward' && (
+              <div className="coming-page">
+                <div className="coming-icon">🎁</div>
+                <h2>Rewards & Bonuses</h2>
+                <p>Check back daily for coins and free episodes!</p>
+              </div>
+            )}
+
+            {currentTab === 'library' && (
+              <div className="coming-page">
+                <div className="coming-icon">📚</div>
+                <h2>My Watchlist</h2>
+                <p>Your saved and recently watched dramas will appear here.</p>
+              </div>
+            )}
+
+            {currentTab === 'profile' && (
+              <div className="profile-page">
+                <div className="profile-header">
+                  <h1>My Profile</h1>
+                  <button className="settings-button" onClick={() => setShowAdminPortal(true)} title="Creator Portal">⚙️</button>
+                </div>
+                <div className="profile-card">
+                  <div className="profile-avatar">
+                    {user?.profile_pic ? (
+                      <img src={user.profile_pic} alt="Avatar" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                    ) : (
+                      <svg className="nav-icon" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    )}
+                  </div>
+                  <div className="profile-info">
+                    <h2>{user ? user.name || user.email : 'Guest User'}</h2>
+                    <p>{user ? user.email : 'Sign in to sync your watch history'}</p>
+                    {user ? (
+                      <button className="login-button" onClick={handleSignOut} style={{ background: '#ff3b30', color: '#fff' }}>Log Out</button>
+                    ) : (
+                      <button className="login-button" onClick={() => setShowAuthModal(true)}>Log in / Sign up</button>
+                    )}
+                  </div>
+                </div>
+
+                <div style={{ marginTop: '20px' }}>
+                  <button 
+                    onClick={() => setShowAdminPortal(true)}
+                    style={{ width: '100%', padding: '14px', background: '#1c1c1e', border: '1px solid #333', borderRadius: '12px', color: '#fff', fontWeight: 'bold', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                  >
+                    <span>🎥 Creator & Content Portal</span>
+                    <span>→</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* BOTTOM NAVIGATION BAR */}
+            <nav className="bottom-navigation">
+              <button className={`bottom-item ${currentTab === 'home' ? 'active' : ''}`} onClick={() => setCurrentTab('home')}>
+                <svg className="nav-icon" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                <span>Home</span>
+              </button>
+              <button className={`bottom-item ${currentTab === 'reward' ? 'active' : ''}`} onClick={() => setCurrentTab('reward')}>
+                <svg className="nav-icon" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                <span>Reward</span>
+              </button>
+              <button className={`bottom-item ${currentTab === 'library' ? 'active' : ''}`} onClick={() => setCurrentTab('library')}>
+                <svg className="nav-icon" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                <span>Library</span>
+              </button>
+              <button className={`bottom-item ${currentTab === 'profile' ? 'active' : ''}`} onClick={() => setCurrentTab('profile')}>
+                <div className="profile-icon-wrapper">
+                  <svg className="nav-icon" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                  {!user && <span className="notification-dot" />}
+                </div>
+                <span>Profile</span>
+              </button>
+            </nav>
+          </>
+        )}
+
+        {/* AUTHENTICATION MODAL */}
+        {showAuthModal && (
+          <div className="auth-modal-overlay">
+            <div className="auth-modal-card">
+              <div className="auth-modal-header">
+                <h2>{isSignUp ? 'Create Account' : 'Welcome Back'}</h2>
+                <button className="auth-close-btn" onClick={() => setShowAuthModal(false)}>×</button>
+              </div>
+              <form onSubmit={handleAuthSubmit} className="auth-form">
+                {isSignUp && (
+                  <>
+                    <div className="form-group">
+                      <label>Full Name</label>
+                      <input type="text" placeholder="Your Name" value={authName} onChange={(e) => setAuthName(e.target.value)} required />
+                    </div>
+                    <div className="form-group">
+                      <label>Location</label>
+                      <input type="text" placeholder="City, Country" value={authLocation} onChange={(e) => setAuthLocation(e.target.value)} />
+                    </div>
+                  </>
+                )}
+                <div className="form-group">
+                  <label>Email Address</label>
+                  <input type="email" placeholder="name@example.com" value={authEmail} onChange={(e) => setAuthEmail(e.target.value)} required />
+                </div>
+                <div className="form-group">
+                  <label>Password</label>
+                  <input type="password" placeholder="••••••••" value={authPassword} onChange={(e) => setAuthPassword(e.target.value)} required />
+                </div>
+                <button type="submit" className="auth-submit-btn">
+                  {isSignUp ? 'Sign Up & Continue' : 'Log In'}
+                </button>
+              </form>
+              <div className="auth-switch-mode">
+                {isSignUp ? 'Already have an account? ' : "Don't have an account? "}
+                <span onClick={() => setIsSignUp(!isSignUp)}>
+                  {isSignUp ? 'Log in' : 'Sign up'}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TOAST NOTIFICATION */}
+        {toastMessage && (
+          <div style={{ position: 'fixed', bottom: '80px', left: '50%', transform: 'translateX(-50%)', background: '#333', color: '#fff', padding: '10px 20px', borderRadius: '8px', zIndex: 1000, fontSize: '0.85rem' }}>
+            {toastMessage}
+          </div>
+        )}
+
+      </div>
     </div>
   );
-};
+}
 
-export default App;
+function koreanMatchCase(cat: string) {
+  return cat;
+}
