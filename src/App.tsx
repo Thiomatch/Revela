@@ -28,7 +28,7 @@ export const App = () => {
   const [adminPortalView, setAdminPortalView] = useState<AdminPortalView>('rules');
 
   // Get the movie poster public URL dynamically from Supabase storage bucket 'videos'
-  const posterUrl = supabase.storage.from('videos').getPublicUrl('image.Shadows.S1.png').data.publicUrl;
+  const posterUrl = supabase.storage.from('Videos').getPublicUrl('image.Shadows.S1.png').data.publicUrl;
 
   useEffect(() => {
     // Initialize OneSignal Push Notifications
