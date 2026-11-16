@@ -19,6 +19,7 @@ type AdministrativePortalProps = {
   adminUser?: AdminUser | null;
   onNavigate?: (view: AdminPortalView) => void;
   onAdminCreated?: (user: AdminUser) => void;
+  onAdminLogout?: () => void;
   onPlayVideo?: (video: AdminVideo) => void;
   user?: any;
   onClose?: () => void;
@@ -32,6 +33,7 @@ export default function AdministrativePortal({
   adminUser = null,
   onNavigate = () => {},
   onAdminCreated = () => {},
+  onAdminLogout,
 }: AdministrativePortalProps) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -186,6 +188,18 @@ export default function AdministrativePortal({
     }
   };
 
+  const handleLogout = async () => {
+    setErrorMessage('');
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      onAdminLogout?.();
+      onNavigate('rules');
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'Unable to log out.');
+    }
+  };
+
   const handleVideoFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.currentTarget.files?.[0] ?? null;
     setVideoFile(file);
@@ -296,6 +310,15 @@ export default function AdministrativePortal({
           >
             Back
           </button>
+          {adminUser && (
+            <button
+              type="button"
+              onClick={() => void handleLogout()}
+              style={{ background: 'none', border: '1px solid #555', color: '#fff', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' }}
+            >
+              Log out
+            </button>
+          )}
         </div>
       </div>
 
@@ -473,7 +496,16 @@ export default function AdministrativePortal({
                 <p style={{ margin: 0, fontSize: '12px', color: '#8e8e93' }}>{adminUser.email} · {adminUser.region}</p>
               </div>
             </div>
-            <span style={{ background: '#e50914', color: '#fff', padding: '4px 10px', borderRadius: '20px', fontSize: '10px', fontWeight: 'bold' }}>ADMIN</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ background: '#e50914', color: '#fff', padding: '4px 10px', borderRadius: '20px', fontSize: '10px', fontWeight: 'bold' }}>ADMIN</span>
+              <button
+                type="button"
+                onClick={() => void handleLogout()}
+                style={{ background: 'none', border: '1px solid #555', color: '#fff', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' }}
+              >
+                Log out
+              </button>
+            </div>
           </div>
 
           <div style={{ background: '#1c1c1e', padding: '16px', borderRadius: '12px', marginBottom: '20px' }}>

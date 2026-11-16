@@ -144,6 +144,10 @@ export const App = () => {
           }
         }}
         onAdminCreated={handleAdminCreated}
+        onAdminLogout={() => {
+          setAdminUser(null);
+          localStorage.removeItem('revela_admin_user');
+        }}
         onPlayVideo={() => {
           setShowAdminPortal(false);
           setIsPlaying(true);
