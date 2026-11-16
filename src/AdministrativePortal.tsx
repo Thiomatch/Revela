@@ -428,7 +428,7 @@ export default function AdministrativePortal({
                 }}
               >
                 {avatarPreview ? (
-                  <img src={avatarPreview} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <img src={avatarPreview} alt="Avatar Preview" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                 ) : (
                   '＋'
                 )}
@@ -487,7 +487,7 @@ export default function AdministrativePortal({
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
             <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
               <div style={{ width: '64px', height: '64px', borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: '#2c2c2e' }}>
-                <img src={adminUser.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <img src={adminUser.avatar} alt="Profile Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
               </div>
               <div>
                 <h2 style={{ margin: '0 0 4px 0', fontSize: '18px' }}>{adminUser.name}</h2>
