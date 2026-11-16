@@ -18,7 +18,7 @@ export type AdminVideo = {
   status: string;
 };
 
-const MEDIA_BUCKET = 'revela-media';
+const MEDIA_BUCKET = 'Videos';
 const ADMIN_USERS_TABLE = 'admin_users';
 const CREATOR_VIDEOS_TABLE = 'creator_videos';
 
