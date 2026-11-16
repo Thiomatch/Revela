@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
+import { Eye, EyeOff } from 'lucide-react';
 import {
   createAdminUser,
   createProviderProfile,
@@ -7,6 +8,7 @@ import {
   getApprovedVideos,
   subscribeToCreatorVideos,
   submitAdminVideo,
+  updateAdminAvatar,
   type AdminUser,
   type AdminVideo,
 } from './adminStore';
@@ -19,6 +21,7 @@ type AdministrativePortalProps = {
   adminUser?: AdminUser | null;
   onNavigate?: (view: AdminPortalView) => void;
   onAdminCreated?: (user: AdminUser) => void;
+  onAdminUpdated?: (user: AdminUser) => void;
   onAdminLogout?: () => void;
   onPlayVideo?: (video: AdminVideo) => void;
   user?: any;
@@ -33,13 +36,16 @@ export default function AdministrativePortal({
   adminUser = null,
   onNavigate = () => {},
   onAdminCreated = () => {},
+  onAdminUpdated = () => {},
   onAdminLogout,
 }: AdministrativePortalProps) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [channelName, setChannelName] = useState('');
   const [region, setRegion] = useState('');
+  const [profileAvatar, setProfileAvatar] = useState(adminUser?.avatar ?? '');
   const [avatarPreview, setAvatarPreview] = useState('');
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [rulesAccepted, setRulesAccepted] = useState(false);
@@ -50,8 +56,14 @@ export default function AdministrativePortal({
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUpdatingAvatar, setIsUpdatingAvatar] = useState(false);
   const [, setRefreshVersion] = useState(0);
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
+  const profileAvatarInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    setProfileAvatar(adminUser?.avatar ?? '');
+  }, [adminUser?.avatar]);
 
   useEffect(() => {
     if (view !== 'profile' && view !== 'library') return undefined;
@@ -110,6 +122,35 @@ export default function AdministrativePortal({
     };
     reader.onerror = () => setErrorMessage('The profile photo could not be read.');
     reader.readAsDataURL(file);
+  };
+
+  const handleProfileAvatarChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.currentTarget.files?.[0];
+    if (!file) return;
+    event.currentTarget.value = '';
+    if (!adminUser) return;
+    if (!file.type.startsWith('image/')) {
+      setErrorMessage('Choose an image file for your profile photo.');
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setErrorMessage('Profile photos must be 2 MB or smaller.');
+      return;
+    }
+
+    setErrorMessage('');
+    setSuccessMessage('');
+    setIsUpdatingAvatar(true);
+    try {
+      const avatarUrl = await updateAdminAvatar(adminUser.email, file);
+      setProfileAvatar(avatarUrl);
+      onAdminUpdated({ ...adminUser, avatar: avatarUrl });
+      setSuccessMessage('Profile photo updated.');
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'The profile photo could not be updated.');
+    } finally {
+      setIsUpdatingAvatar(false);
+    }
   };
 
   const handleSignup = async (event: FormEvent<HTMLFormElement>) => {
@@ -342,10 +383,10 @@ export default function AdministrativePortal({
               />
             </div>
 
-            <div>
+            <div style={{ position: 'relative' }}>
               <label style={{ display: 'block', fontSize: '12px', color: '#aaa', marginBottom: '6px' }}>Password</label>
               <input
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -357,10 +398,19 @@ export default function AdministrativePortal({
                   borderRadius: '8px',
                   color: '#fff',
                   fontSize: '14px',
-                  boxSizing: 'border-box'
+                  boxSizing: 'border-box',
+                  paddingRight: '42px'
                 }}
                 placeholder="••••••••"
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword((visible) => !visible)}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                style={{ position: 'absolute', right: '10px', top: '34px', background: 'none', border: 'none', color: '#aaa', cursor: 'pointer', padding: '4px' }}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
             </div>
 
             <button
@@ -456,7 +506,17 @@ export default function AdministrativePortal({
 
             <div>
               <label style={{ display: 'block', fontSize: '12px', color: '#aaa', marginBottom: '4px' }}>Password (min 8 chars)</label>
-              <input type="password" minLength={8} required value={password} onChange={(e) => setPassword(e.target.value)} style={{ width: '100%', padding: '10px', background: '#1c1c1e', border: '1px solid #333', borderRadius: '8px', color: '#fff', boxSizing: 'border-box' }} placeholder="••••••••" />
+              <div style={{ position: 'relative' }}>
+                <input type={showPassword ? 'text' : 'password'} minLength={8} required value={password} onChange={(e) => setPassword(e.target.value)} style={{ width: '100%', padding: '10px 42px 10px 10px', background: '#1c1c1e', border: '1px solid #333', borderRadius: '8px', color: '#fff', boxSizing: 'border-box' }} placeholder="••••••••" />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((visible) => !visible)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#aaa', cursor: 'pointer', padding: '4px' }}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
 
             <div>
@@ -486,9 +546,19 @@ export default function AdministrativePortal({
         <div style={{ maxWidth: '600px', margin: '20px auto', background: '#141416', padding: '24px', borderRadius: '16px', border: '1px solid #2a2a2e', position: 'relative', paddingBottom: '70px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
             <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-              <div style={{ width: '64px', height: '64px', borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: '#2c2c2e' }}>
-                <img src={adminUser.avatar} alt="Profile Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-              </div>
+              <button
+                type="button"
+                onClick={() => profileAvatarInputRef.current?.click()}
+                aria-label="Edit profile photo"
+                disabled={isUpdatingAvatar}
+                style={{ position: 'relative', width: '64px', height: '64px', borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: '#2c2c2e', border: 'none', padding: 0, cursor: isUpdatingAvatar ? 'wait' : 'pointer' }}
+              >
+                {profileAvatar && <img src={profileAvatar} alt="Profile Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />}
+                <span style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.48)', color: '#fff', fontSize: '12px', fontWeight: 'bold' }}>
+                  {isUpdatingAvatar ? '...' : 'Edit'}
+                </span>
+              </button>
+              <input ref={profileAvatarInputRef} type="file" accept="image/*" onChange={(event) => void handleProfileAvatarChange(event)} style={{ display: 'none' }} />
               <div>
                 <h2 style={{ margin: '0 0 4px 0', fontSize: '18px' }}>{adminUser.name}</h2>
                 <p style={{ margin: 0, fontSize: '12px', color: '#8e8e93' }}>{adminUser.email} · {adminUser.region}</p>

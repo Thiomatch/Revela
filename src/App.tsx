@@ -144,6 +144,10 @@ export const App = () => {
           }
         }}
         onAdminCreated={handleAdminCreated}
+        onAdminUpdated={(user) => {
+          setAdminUser(user);
+          localStorage.setItem('revela_admin_user', JSON.stringify(user));
+        }}
         onAdminLogout={() => {
           setAdminUser(null);
           localStorage.removeItem('revela_admin_user');

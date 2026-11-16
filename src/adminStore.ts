@@ -34,7 +34,7 @@ function mapAdminUser(record: Record<string, unknown>, email: string): AdminUser
   return {
     id: String(record.id ?? ''),
     email: String(record.email ?? email),
-    avatar: String(record.avatar_url ?? ''),
+    avatar: String(record.avatar_url ?? record.avatar ?? ''),
     name: String(record.name ?? record.full_name ?? ''),
     channelName: String(record.channel_name ?? record.name ?? record.full_name ?? ''),
     region: String(record.region ?? ''),
@@ -76,6 +76,21 @@ export async function getCurrentAdmin(email: string): Promise<AdminUser | null> 
     channelName: user.channelName || String(metadata.channel_name ?? metadata.full_name ?? ''),
     region: user.region || String(metadata.region ?? ''),
   };
+}
+
+export async function updateAdminAvatar(email: string, avatarFile: File): Promise<string> {
+  const fileExt = avatarFile.name.split('.').pop();
+  const fileName = `avatars/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+  const { error: uploadError } = await supabase.storage.from(MEDIA_BUCKET).upload(fileName, avatarFile);
+  if (uploadError) throw uploadError;
+  const { data: publicUrlData } = supabase.storage.from(MEDIA_BUCKET).getPublicUrl(fileName);
+  const avatarUrl = publicUrlData.publicUrl;
+  const { error: updateError } = await supabase
+    .from(ADMIN_USERS_TABLE)
+    .update({ avatar: avatarUrl })
+    .eq('email', email);
+  if (updateError) throw updateError;
+  return avatarUrl;
 }
 
 export async function createAdminUser(details: {
