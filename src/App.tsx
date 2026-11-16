@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';  
+import { useState, useEffect, useRef } from 'react';
 import OneSignal from '@onesignal/capacitor-plugin';
 import { supabase } from './supabaseClient';
 import { RegistrationModal } from './RegistrationModal';
@@ -14,6 +14,7 @@ export const App = () => {
   const [creatorVideos, setCreatorVideos] = useState<AdminVideo[]>([]);
   const [creatorVideosError, setCreatorVideosError] = useState('');
   const [selectedCreatorVideo, setSelectedCreatorVideo] = useState<AdminVideo | null>(null);
+  const hasUserSelectedPlaybackRef = useRef(false);
   
   // State to control showing the database poster first vs playing the video
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
@@ -65,6 +66,10 @@ export const App = () => {
         if (!isCancelled) {
           setCreatorVideos(videos);
           setCreatorVideosError('');
+          if (videos.length > 0 && !hasUserSelectedPlaybackRef.current) {
+            setSelectedCreatorVideo(videos[0]);
+            setIsPlaying(true);
+          }
         }
       })
       .catch((error) => {
@@ -108,6 +113,7 @@ export const App = () => {
   const activeEpisodeData = episodes.find((ep) => ep.episode_number === currentEpisode) || episodes[0];
 
   const handleSelectEpisode = (epInput: number | string) => {
+    hasUserSelectedPlaybackRef.current = true;
     const epNumber = Number(epInput);
     setSelectedCreatorVideo(null);
     setCurrentEpisode(epNumber);
@@ -116,6 +122,7 @@ export const App = () => {
   };
 
   const handlePlayCreatorVideo = (video: AdminVideo) => {
+    hasUserSelectedPlaybackRef.current = true;
     setSelectedCreatorVideo(video);
     setIsTransitioning(false);
     setNextEpisodeData(null);
@@ -259,7 +266,10 @@ export const App = () => {
         {!isPlaying ? (
           /* Startup Movie Poster from Supabase Storage with Play Button Overlay */
           <div 
-            onClick={() => setIsPlaying(true)}
+            onClick={() => {
+              hasUserSelectedPlaybackRef.current = true;
+              setIsPlaying(true);
+            }}
             style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}
           >
             <img 
@@ -326,7 +336,7 @@ export const App = () => {
           </h2>
           <p style={{ margin: 0, fontSize: '12px', color: '#e0e0e0', lineHeight: 1.3 }}>
             {selectedCreatorVideo
-              ? `Created by ${selectedCreatorVideo.creatorName || selectedCreatorVideo.ownerEmail}`
+              ? `Uploaded by: ${selectedCreatorVideo.creatorName || selectedCreatorVideo.ownerEmail}`
               : 'Dark secrets emerge as strange tides sweep across the quiet coastal village.'}
           </p>
         </div>
@@ -382,7 +392,7 @@ export const App = () => {
                       </span>
                     )}
                     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#b8b8bd', fontSize: '12px' }}>
-                      {video.creatorName || video.ownerEmail}
+                      Uploaded by: {video.creatorName || video.ownerEmail}
                     </span>
                   </div>
                 </div>
