@@ -156,7 +156,7 @@ export async function createProviderProfile(details: {
 
     const { error: profileError } = await supabase
       .from(ADMIN_USERS_TABLE)
-      .insert({ email, avatar_url: avatarUrl });
+      .insert({ email, avatar: avatarUrl });
     throwSupabaseError(profileError);
     return {
       id: userId,
