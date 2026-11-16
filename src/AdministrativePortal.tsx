@@ -310,15 +310,6 @@ export default function AdministrativePortal({
           >
             Back
           </button>
-          {adminUser && (
-            <button
-              type="button"
-              onClick={() => void handleLogout()}
-              style={{ background: 'none', border: '1px solid #555', color: '#fff', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' }}
-            >
-              Log out
-            </button>
-          )}
         </div>
       </div>
 
@@ -421,8 +412,8 @@ export default function AdministrativePortal({
                 type="button"
                 onClick={() => avatarInputRef.current?.click()}
                 style={{
-                  width: '56px',
-                  height: '56px',
+                  width: '64px',
+                  height: '64px',
                   borderRadius: '50%',
                   background: '#2c2c2e',
                   border: '2px dashed #555',
@@ -432,10 +423,15 @@ export default function AdministrativePortal({
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  flexShrink: 0
+                  flexShrink: 0,
+                  padding: 0
                 }}
               >
-                {avatarPreview ? <img src={avatarPreview} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : '＋'}
+                {avatarPreview ? (
+                  <img src={avatarPreview} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  '＋'
+                )}
               </button>
               <div>
                 <strong style={{ fontSize: '13px', display: 'block' }}>Profile photo</strong>
@@ -487,25 +483,18 @@ export default function AdministrativePortal({
 
       {/* Profile Dashboard View */}
       {view === 'profile' && adminUser && (
-        <div style={{ maxWidth: '600px', margin: '20px auto', background: '#141416', padding: '24px', borderRadius: '16px', border: '1px solid #2a2a2e' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+        <div style={{ maxWidth: '600px', margin: '20px auto', background: '#141416', padding: '24px', borderRadius: '16px', border: '1px solid #2a2a2e', position: 'relative', paddingBottom: '70px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
             <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-              <img src={adminUser.avatar} alt="" style={{ width: '60px', height: '60px', borderRadius: '50%', objectFit: 'cover' }} />
+              <div style={{ width: '64px', height: '64px', borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: '#2c2c2e' }}>
+                <img src={adminUser.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              </div>
               <div>
                 <h2 style={{ margin: '0 0 4px 0', fontSize: '18px' }}>{adminUser.name}</h2>
                 <p style={{ margin: 0, fontSize: '12px', color: '#8e8e93' }}>{adminUser.email} · {adminUser.region}</p>
               </div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ background: '#e50914', color: '#fff', padding: '4px 10px', borderRadius: '20px', fontSize: '10px', fontWeight: 'bold' }}>ADMIN</span>
-              <button
-                type="button"
-                onClick={() => void handleLogout()}
-                style={{ background: 'none', border: '1px solid #555', color: '#fff', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' }}
-              >
-                Log out
-              </button>
-            </div>
+            <span style={{ background: '#e50914', color: '#fff', padding: '4px 10px', borderRadius: '20px', fontSize: '10px', fontWeight: 'bold' }}>ADMIN</span>
           </div>
 
           <div style={{ background: '#1c1c1e', padding: '16px', borderRadius: '12px', marginBottom: '20px' }}>
@@ -517,6 +506,26 @@ export default function AdministrativePortal({
                 {isSubmitting ? 'Uploading...' : 'Submit Video for Review'}
               </button>
             </form>
+          </div>
+
+          {/* Log out button positioned at the bottom right */}
+          <div style={{ position: 'absolute', bottom: '20px', right: '24px' }}>
+            <button
+              type="button"
+              onClick={() => void handleLogout()}
+              style={{
+                background: '#2c2c2e',
+                color: '#fff',
+                border: '1px solid #444',
+                padding: '8px 16px',
+                borderRadius: '8px',
+                fontSize: '13px',
+                fontWeight: 'bold',
+                cursor: 'pointer'
+              }}
+            >
+              Log out
+            </button>
           </div>
         </div>
       )}
