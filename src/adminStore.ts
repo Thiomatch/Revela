@@ -16,6 +16,9 @@ export type AdminVideo = {
   ownerEmail: string;
   uploadedAt: string | null;
   status: string;
+  creatorName?: string;
+  creatorAvatar?: string;
+  thumbnailUrl?: string;
 };
 
 const MEDIA_BUCKET = 'Videos';
@@ -34,7 +37,7 @@ function mapAdminUser(record: Record<string, unknown>, email: string): AdminUser
   return {
     id: String(record.id ?? ''),
     email: String(record.email ?? email),
-    avatar: String(record.avatar_url ?? record.avatar ?? ''),
+    avatar: String(record.avatar ?? record.avatar_url ?? ''),
     name: String(record.name ?? record.full_name ?? ''),
     channelName: String(record.channel_name ?? record.name ?? record.full_name ?? ''),
     region: String(record.region ?? ''),
@@ -50,6 +53,7 @@ function mapAdminVideo(record: Record<string, unknown>): AdminVideo {
     ownerEmail: String(record.email ?? ''),
     uploadedAt: typeof uploadedAt === 'string' ? uploadedAt : null,
     status: String(record.status ?? 'pending').toLowerCase(),
+    thumbnailUrl: String(record.thumbnail_url ?? record.thumbnail ?? record.poster_url ?? ''),
   };
 }
 
@@ -229,10 +233,33 @@ export async function getApprovedVideos(): Promise<AdminVideo[]> {
     .select('*')
     .eq('status', 'approved');
   throwSupabaseError(error);
-  return (data ?? [])
+  const videos = (data ?? [])
     .map((record) => mapAdminVideo(record as Record<string, unknown>))
     .filter((video) => video.videoUrl)
     .sort((first, second) => (second.uploadedAt ?? '').localeCompare(first.uploadedAt ?? ''));
+  const creatorEmails = [...new Set(videos.map((video) => video.ownerEmail.trim().toLowerCase()).filter(Boolean))];
+  if (creatorEmails.length === 0) return videos;
+
+  const { data: creators, error: creatorsError } = await supabase
+    .from(ADMIN_USERS_TABLE)
+    .select('*')
+    .in('email', creatorEmails);
+  throwSupabaseError(creatorsError);
+
+  const creatorsByEmail = new Map(
+    (creators ?? []).map((creator) => [
+      String(creator.email ?? '').trim().toLowerCase(),
+      creator as Record<string, unknown>,
+    ]),
+  );
+  return videos.map((video) => {
+    const creator = creatorsByEmail.get(video.ownerEmail.trim().toLowerCase());
+    return {
+      ...video,
+      creatorName: String(creator?.channel_name ?? creator?.name ?? creator?.full_name ?? video.ownerEmail),
+      creatorAvatar: String(creator?.avatar ?? creator?.avatar_url ?? ''),
+    };
+  });
 }
 
 export function subscribeToCreatorVideos(onChange: () => void): () => void {

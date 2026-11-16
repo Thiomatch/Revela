@@ -4,13 +4,16 @@ import { supabase } from './supabaseClient';
 import { RegistrationModal } from './RegistrationModal';
 import VideoSocialFeatures from './VideoSocialFeatures';
 import AdministrativePortal, { type AdminPortalView } from './AdministrativePortal';
-import { type AdminUser } from './adminStore';
+import { getApprovedVideos, type AdminUser, type AdminVideo } from './adminStore';
 
 export const App = () => {
   const [episodes, setEpisodes] = useState<any[]>([]);
   const [currentEpisode, setCurrentEpisode] = useState<number>(1);
   const [showEpisodeModal, setShowEpisodeModal] = useState(false);
   const [activeTab, setActiveTab] = useState<'synopsis' | 'episodes'>('episodes');
+  const [creatorVideos, setCreatorVideos] = useState<AdminVideo[]>([]);
+  const [creatorVideosError, setCreatorVideosError] = useState('');
+  const [selectedCreatorVideo, setSelectedCreatorVideo] = useState<AdminVideo | null>(null);
   
   // State to control showing the database poster first vs playing the video
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
@@ -55,6 +58,26 @@ export const App = () => {
     }
   }, []);
 
+  useEffect(() => {
+    let isCancelled = false;
+    void getApprovedVideos()
+      .then((videos) => {
+        if (!isCancelled) {
+          setCreatorVideos(videos);
+          setCreatorVideosError('');
+        }
+      })
+      .catch((error) => {
+        if (!isCancelled) {
+          setCreatorVideosError(error instanceof Error ? error.message : 'Creator videos could not be loaded.');
+        }
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
+
   const fetchEpisodes = async () => {
     // Fetching episodes from Supabase with fallbacks for column names
     const { data, error } = await supabase
@@ -86,13 +109,26 @@ export const App = () => {
 
   const handleSelectEpisode = (epInput: number | string) => {
     const epNumber = Number(epInput);
+    setSelectedCreatorVideo(null);
     setCurrentEpisode(epNumber);
     setShowEpisodeModal(false);
     setIsPlaying(true); // Switch to video player when an episode is selected
   };
 
+  const handlePlayCreatorVideo = (video: AdminVideo) => {
+    setSelectedCreatorVideo(video);
+    setIsTransitioning(false);
+    setNextEpisodeData(null);
+    setIsPlaying(true);
+  };
+
   // Triggered the exact moment the video finishes or reaches the end
   const handleVideoEnded = () => {
+    if (selectedCreatorVideo) {
+      setSelectedCreatorVideo(null);
+      setIsPlaying(false);
+      return;
+    }
     if (isTransitioning) return; // Prevent duplicate triggers
 
     const nextEpNum = currentEpisode + 1;
@@ -161,10 +197,10 @@ export const App = () => {
   }
 
   return (
-    <div style={{ backgroundColor: '#000', color: '#fff', height: '100vh', width: '100vw', margin: 0, padding: 0, overflow: 'hidden', position: 'relative', fontFamily: 'sans-serif' }}>
+    <div style={{ backgroundColor: '#000', color: '#fff', height: '100vh', width: '100vw', margin: 0, padding: 0, overflowX: 'hidden', overflowY: 'auto', position: 'relative', fontFamily: 'sans-serif' }}>
       
       {/* Top Right Auth / Profile "ME" Badge Control */}
-      <div style={{ position: 'absolute', top: '16px', right: '16px', zIndex: 30 }}>
+    <div style={{ position: 'fixed', top: '16px', right: '16px', zIndex: 30 }}>
         {adminUser ? (
           <button
             onClick={() => {
@@ -218,7 +254,7 @@ export const App = () => {
       </div>
 
       {/* Fullscreen Container */}
-      <div className="video-frame video-transition-container" style={{ width: '100%', height: '100%', position: 'relative', background: '#000', overflow: 'hidden' }}>
+      <div className="video-frame video-transition-container" style={{ width: '100%', height: '100vh', minHeight: '500px', position: 'relative', background: '#000', overflow: 'hidden' }}>
         
         {!isPlaying ? (
           /* Startup Movie Poster from Supabase Storage with Play Button Overlay */
@@ -252,7 +288,7 @@ export const App = () => {
           /* Actual Video Player View */
           <div className={`episode-slide-wrapper ${isTransitioning ? 'slide-enter-active' : 'slide-enter'}`} style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}>
             <video
-              key={displayEpisode?.id || displayEpisode?.episode_number || currentEpisode}
+              key={selectedCreatorVideo?.id || displayEpisode?.id || displayEpisode?.episode_number || currentEpisode}
               className="video-element"
               controls
               autoPlay
@@ -267,7 +303,7 @@ export const App = () => {
               }}
               style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
             >
-              <source src={displayEpisode?.video_url || ''} type="video/mp4" />
+              <source src={selectedCreatorVideo?.videoUrl || displayEpisode?.video_url || ''} type={selectedCreatorVideo ? undefined : 'video/mp4'} />
               Your browser does not support the video tag.
             </video>
           </div>
@@ -284,20 +320,77 @@ export const App = () => {
           textShadow: '0 1px 4px rgba(0,0,0,0.8)'
         }}>
           <h2 style={{ margin: '0 0 4px 0', fontSize: '18px', fontWeight: 700, color: '#fff' }}>
-            Shadows: Deep waters — Ep. {displayEpisode?.episode_number || currentEpisode}
+            {selectedCreatorVideo
+              ? selectedCreatorVideo.title
+              : `Shadows: Deep waters — Ep. ${displayEpisode?.episode_number || currentEpisode}`}
           </h2>
           <p style={{ margin: 0, fontSize: '12px', color: '#e0e0e0', lineHeight: 1.3 }}>
-            Dark secrets emerge as strange tides sweep across the quiet coastal village.
+            {selectedCreatorVideo
+              ? `Created by ${selectedCreatorVideo.creatorName || selectedCreatorVideo.ownerEmail}`
+              : 'Dark secrets emerge as strange tides sweep across the quiet coastal village.'}
           </p>
         </div>
 
         {/* Floating Social Features & Episode Button on Middle Right */}
         <VideoSocialFeatures 
-          videoId={String(currentEpisode)} 
+          videoId={selectedCreatorVideo?.id ?? String(currentEpisode)}
           onOpenEpisodes={() => setShowEpisodeModal(true)}
           onRequireRegistration={handleRequireRegistration}
         />
       </div>
+
+      <section aria-labelledby="creator-spotlight-heading" style={{ padding: '28px 20px 36px', background: '#0a0a0c' }}>
+        <h2 id="creator-spotlight-heading" style={{ margin: '0 0 16px', fontSize: '20px', fontWeight: 700 }}>
+          Creator Spotlight
+        </h2>
+        {creatorVideosError ? (
+          <p role="alert" style={{ margin: 0, color: '#ff6b6b', fontSize: '13px' }}>
+            Creator videos could not be loaded: {creatorVideosError}
+          </p>
+        ) : creatorVideos.length === 0 ? (
+          <p style={{ margin: 0, color: '#8e8e93', fontSize: '13px' }}>No approved creator videos yet.</p>
+        ) : (
+          <div style={{ display: 'flex', gap: '14px', overflowX: 'auto', paddingBottom: '8px' }}>
+            {creatorVideos.map((video) => (
+              <button
+                key={video.id}
+                type="button"
+                onClick={() => handlePlayCreatorVideo(video)}
+                aria-label={`Play ${video.title} by ${video.creatorName || video.ownerEmail}`}
+                style={{ flex: '0 0 220px', padding: 0, border: '1px solid #2a2a2e', borderRadius: '12px', overflow: 'hidden', background: '#141416', color: '#fff', textAlign: 'left', cursor: 'pointer' }}
+              >
+                <div style={{ position: 'relative', height: '124px', background: '#242428' }}>
+                  {video.thumbnailUrl ? (
+                    <img src={video.thumbnailUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                  ) : (
+                    <video src={video.videoUrl} muted playsInline preload="metadata" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                  )}
+                  <span aria-hidden="true" style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '25px', textShadow: '0 1px 5px #000' }}>
+                    ▶
+                  </span>
+                </div>
+                <div style={{ padding: '12px' }}>
+                  <strong style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '14px', marginBottom: '10px' }}>
+                    {video.title}
+                  </strong>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                    {video.creatorAvatar ? (
+                      <img src={video.creatorAvatar} alt="" style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+                    ) : (
+                      <span aria-hidden="true" style={{ width: '28px', height: '28px', borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#38383d', fontSize: '11px', fontWeight: 700 }}>
+                        {(video.creatorName || video.ownerEmail).slice(0, 1).toUpperCase()}
+                      </span>
+                    )}
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#b8b8bd', fontSize: '12px' }}>
+                      {video.creatorName || video.ownerEmail}
+                    </span>
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </section>
 
       {/* Episode Selector Modal (Redesigned Grid Layout) */}
       {showEpisodeModal && (
