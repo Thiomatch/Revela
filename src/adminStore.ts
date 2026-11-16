@@ -156,7 +156,14 @@ export async function createProviderProfile(details: {
 
     const { error: profileError } = await supabase
       .from(ADMIN_USERS_TABLE)
-      .insert({ email, avatar: avatarUrl });
+      .upsert({
+        id: userId, // Set the ID to the user's auth ID
+        email,
+        avatar: avatarUrl,
+        name: details.name.trim(),
+        channel_name: details.channelName.trim(),
+        region: details.region.trim(),
+      }, { onConflict: 'email' }); // Upsert based on email conflict
     throwSupabaseError(profileError);
     return {
       id: userId,
@@ -197,12 +204,12 @@ export async function submitAdminVideo(
   try {
     const { data, error } = await supabase
       .from(CREATOR_VIDEOS_TABLE)
-      .insert({
+      .upsert({ // Changed from insert to upsert for robustness
         title: details.title.trim(),
         email: details.ownerEmail.trim().toLowerCase(),
         video_url: videoUrl,
         status: 'pending',
-      })
+      }, { onConflict: 'video_url' }) // Upsert based on video_url conflict (or appropriate column)
       .select('*')
       .single();
     throwSupabaseError(error);
@@ -210,9 +217,9 @@ export async function submitAdminVideo(
   } catch (error) {
     const { error: cleanupError } = await supabase.storage.from(MEDIA_BUCKET).remove([path]);
     if (cleanupError) {
-      console.error('Unable to remove the video after its database insert failed:', cleanupError.message);
+      console.error('Unable to remove the video after its database upsert failed:', cleanupError.message);
     }
-    throw new Error(`The video was uploaded, but its database record could not be created: ${getErrorMessage(error)}`);
+    throw new Error(`The video was uploaded, but its database record could not be created/updated: ${getErrorMessage(error)}`);
   }
 }
 
