@@ -84,23 +84,6 @@ function isMobileBrowser(): boolean {
     || (/Macintosh/i.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
 }
 
-function blobToDataUrl(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === 'string') {
-        resolve(reader.result);
-      } else {
-        reject(new Error('The agreement PDF could not be prepared for preview.'));
-      }
-    };
-    reader.onerror = () => {
-      reject(reader.error ?? new Error('The agreement PDF could not be prepared for preview.'));
-    };
-    reader.readAsDataURL(blob);
-  });
-}
-
 export default function WorkWithUs({ onClose, initialView = 'apply' }: WorkWithUsProps) {
   const [user, setUser] = useState<User | null>(null);
   const [authMode, setAuthMode] = useState<AuthMode>('sign-in');
@@ -127,7 +110,7 @@ export default function WorkWithUs({ onClose, initialView = 'apply' }: WorkWithU
   const [versionLoading, setVersionLoading] = useState(false);
   const [busyAgreementId, setBusyAgreementId] = useState('');
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
-  const [pdfPreview, setPdfPreview] = useState<{ dataUrl: string; fileName: string } | null>(null);
+  const [pdfPreview, setPdfPreview] = useState<{ objectUrl: string; fileName: string } | null>(null);
   const [message, setMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [searchText, setSearchText] = useState('');
@@ -150,6 +133,7 @@ export default function WorkWithUs({ onClose, initialView = 'apply' }: WorkWithU
     return () => {
       document.body.style.overflow = previousOverflow;
       window.removeEventListener('keydown', handleKeyDown);
+      window.setTimeout(() => URL.revokeObjectURL(pdfPreview.objectUrl), 60000);
     };
   }, [pdfPreview]);
 
@@ -395,7 +379,7 @@ export default function WorkWithUs({ onClose, initialView = 'apply' }: WorkWithU
       const fileName = `REVELA-Marketing-Agreement-${safeName}.pdf`;
       const blob = await generateAgreementPdf(agreement);
       if (isMobileBrowser()) {
-        setPdfPreview({ dataUrl: await blobToDataUrl(blob), fileName });
+        setPdfPreview({ objectUrl: URL.createObjectURL(blob), fileName });
         return;
       }
 
@@ -420,6 +404,33 @@ export default function WorkWithUs({ onClose, initialView = 'apply' }: WorkWithU
       setErrorMessage(error instanceof Error ? error.message : 'The agreement PDF could not be generated.');
     } finally {
       setIsGeneratingPdf(false);
+    }
+  };
+
+  const openPdfPreview = () => {
+    if (!pdfPreview) return;
+    let previewWindow: Window | null = null;
+    try {
+      previewWindow = window.open(pdfPreview.objectUrl, '_blank');
+    } catch {
+      previewWindow = null;
+    }
+    if (previewWindow) {
+      previewWindow.opener = null;
+      return;
+    }
+
+    const link = document.createElement('a');
+    link.href = pdfPreview.objectUrl;
+    link.download = pdfPreview.fileName;
+    link.style.display = 'none';
+    try {
+      document.body.appendChild(link);
+      link.click();
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'The agreement PDF could not be opened or saved.');
+    } finally {
+      link.remove();
     }
   };
 
@@ -901,11 +912,11 @@ export default function WorkWithUs({ onClose, initialView = 'apply' }: WorkWithU
               </div>
               <button type="button" className="wwu-close" onClick={() => setPdfPreview(null)} aria-label="Close PDF preview">×</button>
             </header>
-            <iframe className="wwu-pdf-preview-frame" src={pdfPreview.dataUrl} title="Signed agreement PDF preview" />
+            <iframe className="wwu-pdf-preview-frame" src={pdfPreview.objectUrl} title="Signed agreement PDF preview" />
             <div className="wwu-pdf-preview-actions">
-              <a href={pdfPreview.dataUrl} download={pdfPreview.fileName} target="_blank" rel="noreferrer">
+              <button type="button" className="wwu-button wwu-button-primary" onClick={openPdfPreview}>
                 Open &amp; Save PDF
-              </a>
+              </button>
             </div>
           </section>
         </div>

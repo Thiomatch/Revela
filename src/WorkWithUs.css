@@ -526,20 +526,6 @@
   border-top: 1px solid #2a2a2f;
 }
 
-.wwu-pdf-preview-actions a {
-  display: inline-flex;
-  min-height: 42px;
-  align-items: center;
-  justify-content: center;
-  border-radius: 8px;
-  padding: 0 16px;
-  background: #e50914;
-  color: #fff;
-  font-size: 13px;
-  font-weight: 700;
-  text-decoration: none;
-}
-
 @media (max-width: 700px) {
   .wwu-shell {
     padding: 14px;
@@ -600,7 +586,7 @@
     padding: 12px 14px;
   }
 
-  .wwu-pdf-preview-actions a {
+  .wwu-pdf-preview-actions .wwu-button {
     width: 100%;
   }
 }
