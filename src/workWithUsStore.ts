@@ -318,29 +318,10 @@ export async function downloadAgreementPdf(
   agreement: BrowserAgreementDocument,
   fileName?: string,
 ): Promise<void> {
-  const isMobileBrowser = /Android|iPhone|iPad|iPod|Mobile|Tablet|IEMobile|BlackBerry|Opera Mini/i.test(navigator.userAgent)
-    || (/Macintosh/i.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
-  let mobileWindow: Window | null = null;
-  if (isMobileBrowser) {
-    try {
-      mobileWindow = window.open('', '_blank');
-    } catch {
-      // Fall back to opening the data URL after the PDF is generated.
-    }
-  }
-
-  let pdfModule: typeof import('jspdf');
-  let fontData: string;
-  try {
-    [pdfModule, fontData] = await Promise.all([
-      import('jspdf'),
-      getDejaVuSansFontData(),
-    ]);
-  } catch (error) {
-    mobileWindow?.close();
-    throw error;
-  }
-  const { jsPDF } = pdfModule;
+  const [{ jsPDF }, fontData] = await Promise.all([
+    import('jspdf'),
+    getDejaVuSansFontData(),
+  ]);
   const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   pdf.addFileToVFS('DejaVuSans.ttf', fontData);
   pdf.addFont('DejaVuSans.ttf', 'DejaVuSans', 'normal');
@@ -456,54 +437,19 @@ export async function downloadAgreementPdf(
   }
 
   const safeName = agreement.full_name.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '') || 'Applicant';
-  const blob = pdf.output('blob');
-  const openPdfDataUrl = async () => {
-    const dataUrl = await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        if (typeof reader.result === 'string') {
-          resolve(reader.result);
-        } else {
-          reject(new Error('The agreement PDF could not be converted for mobile viewing.'));
-        }
-      };
-      reader.onerror = () => {
-        reject(reader.error ?? new Error('The agreement PDF could not be converted for mobile viewing.'));
-      };
-      reader.readAsDataURL(blob);
-    });
-
-    if (mobileWindow && !mobileWindow.closed) {
-      mobileWindow.location.replace(dataUrl);
-      return;
-    }
-
-    const fallbackWindow = window.open(dataUrl, '_blank');
-    if (!fallbackWindow) {
-      throw new Error('Your browser blocked the PDF viewer. Allow pop-ups and try downloading the agreement again.');
-    }
-  };
-
-  if (isMobileBrowser) {
-    try {
-      await openPdfDataUrl();
-    } catch (error) {
-      mobileWindow?.close();
-      throw error;
-    }
-    return;
-  }
-
+  const pdfOutput = pdf.output('arraybuffer');
+  const blob = new Blob([pdfOutput], { type: 'application/octet-stream' });
   const objectUrl = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = objectUrl;
-  link.download = fileName ?? `REVELA-Marketing-Agreement-${safeName}.pdf`;
+  const requestedFileName = fileName ?? `REVELA-Marketing-Agreement-${safeName}.pdf`;
+  link.download = requestedFileName.toLowerCase().endsWith('.pdf')
+    ? requestedFileName
+    : `${requestedFileName}.pdf`;
   link.style.display = 'none';
   try {
     document.body.appendChild(link);
     link.click();
-  } catch {
-    await openPdfDataUrl();
   } finally {
     link.remove();
     window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
