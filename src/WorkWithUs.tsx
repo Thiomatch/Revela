@@ -165,7 +165,6 @@ export default function WorkWithUs({ onClose, initialView = 'apply' }: WorkWithU
     if (agreementView === 'apply') {
       setVersion(DEFAULT_AGREEMENT_VERSION);
       setVersionLoading(true);
-      setMessage('Loading the current agreement. The built-in agreement is available meanwhile.');
     }
     void Promise.allSettled([versionRequest, getMyWorkAgreements()])
       .then(([versionResult, applicantResult]) => {
@@ -174,15 +173,11 @@ export default function WorkWithUs({ onClose, initialView = 'apply' }: WorkWithU
         const metadata = user.user_metadata ?? {};
         if (versionResult.status === 'fulfilled' && versionResult.value) {
           setVersion(versionResult.value);
-          if (versionResult.value.isFallback) {
-            setMessage(`Showing the built-in agreement because the online version could not be loaded: ${versionResult.value.fallbackReason}`);
-          }
         } else if (agreementView === 'apply') {
           const reason = versionResult.status === 'rejected' && versionResult.reason instanceof Error
             ? versionResult.reason.message
             : 'The online agreement is unavailable.';
           setVersion({ ...DEFAULT_AGREEMENT_VERSION, fallbackReason: reason });
-          setMessage(`Showing the built-in agreement because the online version could not be loaded: ${reason}`);
         }
         if (applicantResult.status === 'fulfilled') {
           setAgreements(applicantResult.value);
@@ -520,6 +515,7 @@ export default function WorkWithUs({ onClose, initialView = 'apply' }: WorkWithU
   };
 
   const today = new Date().toISOString().slice(0, 10);
+  const displayedVersion = version ?? DEFAULT_AGREEMENT_VERSION;
 
   return (
     <main className="wwu-shell">
@@ -806,13 +802,12 @@ export default function WorkWithUs({ onClose, initialView = 'apply' }: WorkWithU
             </div>
           )}
 
-          {versionLoading && !version ? <p className="wwu-muted">Loading the current agreement…</p> : version ? (
-            <>
+          <>
               <article className="wwu-panel wwu-document">
                 <h2>REVELA</h2>
-                <h3>{version.title}</h3>
-                <p className="wwu-version">Agreement version {version.agreement_version}</p>
-                <pre>{version.agreement_text}</pre>
+                <h3>{displayedVersion.title}</h3>
+                <p className="wwu-version">Agreement version {displayedVersion.agreement_version}</p>
+                <pre>{displayedVersion.agreement_text}</pre>
               </article>
 
               {existingOpenApplication ? (
@@ -869,7 +864,7 @@ export default function WorkWithUs({ onClose, initialView = 'apply' }: WorkWithU
                 <section className="wwu-panel wwu-confirmation" aria-labelledby="wwu-confirm-heading">
                   <p className="wwu-eyebrow">FINAL CONFIRMATION</p>
                   <h2 id="wwu-confirm-heading">Confirm and submit your signed agreement</h2>
-                  <p>By choosing “Confirm &amp; submit signed agreement”, you confirm that you accept version {version.agreement_version} and electronically sign the displayed terms.</p>
+                  <p>By choosing “Confirm &amp; submit signed agreement”, you confirm that you accept version {displayedVersion.agreement_version} and electronically sign the displayed terms.</p>
                   <div className="wwu-detail-grid">
                     <span>Applicant <strong>{fullName}</strong></span>
                     <span>Email <strong>{email}</strong></span>
@@ -888,13 +883,7 @@ export default function WorkWithUs({ onClose, initialView = 'apply' }: WorkWithU
                   </div>
                 </section>
               )}
-            </>
-          ) : (
-            <div className="wwu-panel wwu-existing-application">
-              <h2>Agreement unavailable</h2>
-              <p>The built-in agreement could not be displayed. Please reload and try again.</p>
-            </div>
-          )}
+          </>
         </section>
       )}
     </main>
