@@ -467,65 +467,6 @@
   text-align: center;
 }
 
-.wwu-pdf-preview-overlay {
-  position: fixed;
-  z-index: 10000;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  padding: 16px;
-  background: rgba(0, 0, 0, 0.88);
-}
-
-.wwu-pdf-preview-dialog {
-  display: flex;
-  flex-direction: column;
-  width: min(100%, 1040px);
-  height: min(94vh, 900px);
-  overflow: hidden;
-  border: 1px solid #39393f;
-  border-radius: 14px;
-  background: #101013;
-  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55);
-}
-
-.wwu-pdf-preview-header,
-.wwu-pdf-preview-actions {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  padding: 14px 18px;
-}
-
-.wwu-pdf-preview-header {
-  border-bottom: 1px solid #2a2a2f;
-}
-
-.wwu-pdf-preview-header h2 {
-  margin: 0;
-  font-size: 17px;
-}
-
-.wwu-pdf-preview-header p {
-  margin: 5px 0 0;
-  color: #aaa;
-  font-size: 12px;
-}
-
-.wwu-pdf-preview-frame {
-  flex: 1;
-  width: 100%;
-  min-height: 0;
-  border: 0;
-  background: #fff;
-}
-
-.wwu-pdf-preview-actions {
-  justify-content: flex-end;
-  border-top: 1px solid #2a2a2f;
-}
-
 @media (max-width: 700px) {
   .wwu-shell {
     padding: 14px;
@@ -569,24 +510,4 @@
     width: 100%;
   }
 
-  .wwu-pdf-preview-overlay {
-    padding: 0;
-  }
-
-  .wwu-pdf-preview-dialog {
-    width: 100%;
-    height: 100vh;
-    height: 100dvh;
-    border: 0;
-    border-radius: 0;
-  }
-
-  .wwu-pdf-preview-header,
-  .wwu-pdf-preview-actions {
-    padding: 12px 14px;
-  }
-
-  .wwu-pdf-preview-actions .wwu-button {
-    width: 100%;
-  }
 }

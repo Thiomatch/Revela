@@ -110,7 +110,6 @@ export default function WorkWithUs({ onClose, initialView = 'apply' }: WorkWithU
   const [versionLoading, setVersionLoading] = useState(false);
   const [busyAgreementId, setBusyAgreementId] = useState('');
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
-  const [pdfPreview, setPdfPreview] = useState<{ objectUrl: string; fileName: string } | null>(null);
   const [message, setMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [searchText, setSearchText] = useState('');
@@ -121,21 +120,6 @@ export default function WorkWithUs({ onClose, initialView = 'apply' }: WorkWithU
   const [administratorSignature, setAdministratorSignature] = useState('');
   const [rejectionReason, setRejectionReason] = useState('');
   const [commencementDate, setCommencementDate] = useState('');
-
-  useEffect(() => {
-    if (!pdfPreview) return undefined;
-    const previousOverflow = document.body.style.overflow;
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setPdfPreview(null);
-    };
-    document.body.style.overflow = 'hidden';
-    window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener('keydown', handleKeyDown);
-      window.setTimeout(() => URL.revokeObjectURL(pdfPreview.objectUrl), 60000);
-    };
-  }, [pdfPreview]);
 
   const isAdministrator = user?.app_metadata?.revela_agreement_admin === true;
   const email = user?.email ?? '';
@@ -372,23 +356,61 @@ export default function WorkWithUs({ onClose, initialView = 'apply' }: WorkWithU
   const handleDownload = async (agreement: BrowserAgreementDocument) => {
     setErrorMessage('');
     setMessage('');
-    setPdfPreview(null);
+    const mobile = isMobileBrowser();
+    let mobileWindow: Window | null = null;
+    if (mobile) {
+      try {
+        mobileWindow = window.open('', '_blank');
+        if (mobileWindow) {
+          mobileWindow.document.title = 'Preparing signed agreement';
+          mobileWindow.document.body.textContent = 'Preparing your signed agreement PDF…';
+        }
+      } catch {
+        mobileWindow?.close();
+        mobileWindow = null;
+      }
+    }
     setIsGeneratingPdf(true);
     try {
       const safeName = agreement.full_name.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '') || 'Applicant';
       const fileName = `REVELA-Marketing-Agreement-${safeName}.pdf`;
       const blob = await generateAgreementPdf(agreement);
-      if (isMobileBrowser()) {
-        setPdfPreview({ objectUrl: URL.createObjectURL(blob), fileName });
-        return;
-      }
 
       const legacyNavigator = navigator as Navigator & {
         msSaveOrOpenBlob?: (file: Blob, defaultName?: string) => boolean;
       };
-      if (legacyNavigator.msSaveOrOpenBlob?.call(navigator, blob, fileName)) return;
+      if (legacyNavigator.msSaveOrOpenBlob?.call(navigator, blob, fileName)) {
+        mobileWindow?.close();
+        return;
+      }
 
       const objectUrl = URL.createObjectURL(blob);
+      if (mobile) {
+        let openedInNewTab = false;
+        try {
+          if (mobileWindow && !mobileWindow.closed) {
+            mobileWindow.opener = null;
+            mobileWindow.location.replace(objectUrl);
+            openedInNewTab = true;
+          } else {
+            const openedWindow = window.open(objectUrl, '_blank');
+            if (openedWindow) {
+              openedWindow.opener = null;
+              openedInNewTab = true;
+            }
+          }
+        } catch {
+          openedInNewTab = false;
+        }
+
+        if (!openedInNewTab) {
+          mobileWindow?.close();
+          window.location.href = objectUrl;
+        }
+        window.setTimeout(() => URL.revokeObjectURL(objectUrl), 600000);
+        return;
+      }
+
       const link = document.createElement('a');
       link.href = objectUrl;
       link.download = fileName;
@@ -401,36 +423,10 @@ export default function WorkWithUs({ onClose, initialView = 'apply' }: WorkWithU
         window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
       }
     } catch (error) {
+      mobileWindow?.close();
       setErrorMessage(error instanceof Error ? error.message : 'The agreement PDF could not be generated.');
     } finally {
       setIsGeneratingPdf(false);
-    }
-  };
-
-  const openPdfPreview = () => {
-    if (!pdfPreview) return;
-    let previewWindow: Window | null = null;
-    try {
-      previewWindow = window.open(pdfPreview.objectUrl, '_blank');
-    } catch {
-      previewWindow = null;
-    }
-    if (previewWindow) {
-      previewWindow.opener = null;
-      return;
-    }
-
-    const link = document.createElement('a');
-    link.href = pdfPreview.objectUrl;
-    link.download = pdfPreview.fileName;
-    link.style.display = 'none';
-    try {
-      document.body.appendChild(link);
-      link.click();
-    } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'The agreement PDF could not be opened or saved.');
-    } finally {
-      link.remove();
     }
   };
 
@@ -897,30 +893,6 @@ export default function WorkWithUs({ onClose, initialView = 'apply' }: WorkWithU
         </section>
       )}
 
-      {pdfPreview && (
-        <div
-          className="wwu-pdf-preview-overlay"
-          onClick={(event) => {
-            if (event.target === event.currentTarget) setPdfPreview(null);
-          }}
-        >
-          <section className="wwu-pdf-preview-dialog" role="dialog" aria-modal="true" aria-labelledby="wwu-pdf-preview-title">
-            <header className="wwu-pdf-preview-header">
-              <div>
-                <h2 id="wwu-pdf-preview-title">Signed agreement PDF</h2>
-                <p>Use your browser’s PDF controls to view, print, or save this agreement.</p>
-              </div>
-              <button type="button" className="wwu-close" onClick={() => setPdfPreview(null)} aria-label="Close PDF preview">×</button>
-            </header>
-            <iframe className="wwu-pdf-preview-frame" src={pdfPreview.objectUrl} title="Signed agreement PDF preview" />
-            <div className="wwu-pdf-preview-actions">
-              <button type="button" className="wwu-button wwu-button-primary" onClick={openPdfPreview}>
-                Open &amp; Save PDF
-              </button>
-            </div>
-          </section>
-        </div>
-      )}
     </main>
   );
 }
