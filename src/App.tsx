@@ -4,6 +4,7 @@ import { supabase } from './supabaseClient';
 import { RegistrationModal } from './RegistrationModal';
 import VideoSocialFeatures from './VideoSocialFeatures';
 import AdministrativePortal, { type AdminPortalView } from './AdministrativePortal';
+import WorkWithUs from './WorkWithUs';
 import { getApprovedVideos, type AdminUser, type AdminVideo } from './adminStore';
 
 export const App = () => {
@@ -28,8 +29,11 @@ export const App = () => {
 
   // Administrative Portal & Auth States
   const [adminUser, setAdminUser] = useState<AdminUser | null>(null);
+  const [signedInEmail, setSignedInEmail] = useState<string | null>(null);
   const [showAdminPortal, setShowAdminPortal] = useState(false);
   const [adminPortalView, setAdminPortalView] = useState<AdminPortalView>('rules');
+  const [showWorkWithUs, setShowWorkWithUs] = useState(false);
+  const [workWithUsInitialView, setWorkWithUsInitialView] = useState<'apply' | 'admin'>('apply');
 
   // Get the movie poster public URL dynamically from Supabase storage bucket 'videos'
   const posterUrl = supabase.storage.from('Videos').getPublicUrl('image.Shadows.S1.png').data.publicUrl;
@@ -47,6 +51,16 @@ export const App = () => {
 
     initOneSignal();
     fetchEpisodes();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSignedInEmail(session?.user.email ?? null);
+    });
+    void supabase.auth.getSession().then(({ data, error }) => {
+      if (error) {
+        console.error('Could not load the signed-in account:', error.message);
+        return;
+      }
+      setSignedInEmail(data.session?.user.email ?? null);
+    });
 
     // Check if an existing admin session is saved locally
     const storedUser = localStorage.getItem('revela_admin_user');
@@ -57,6 +71,7 @@ export const App = () => {
         console.error(e);
       }
     }
+    return () => subscription.unsubscribe();
   }, []);
 
   useEffect(() => {
@@ -199,6 +214,24 @@ export const App = () => {
           setShowAdminPortal(false);
           setIsPlaying(true);
         }}
+        onOpenAgreementAdmin={() => {
+          setShowAdminPortal(false);
+          setWorkWithUsInitialView('admin');
+          setShowWorkWithUs(true);
+        }}
+      />
+    );
+  }
+
+  if (showWorkWithUs) {
+    return (
+      <WorkWithUs
+        initialView={workWithUsInitialView}
+        onClose={() => {
+          setShowWorkWithUs(false);
+          if (workWithUsInitialView === 'admin') setShowAdminPortal(true);
+          setWorkWithUsInitialView('apply');
+        }}
       />
     );
   }
@@ -207,7 +240,30 @@ export const App = () => {
     <div style={{ backgroundColor: '#000', color: '#fff', height: '100vh', width: '100vw', margin: 0, padding: 0, overflowX: 'hidden', overflowY: 'auto', position: 'relative', fontFamily: 'sans-serif' }}>
       
       {/* Top Right Auth / Profile "ME" Badge Control */}
-    <div style={{ position: 'fixed', top: '16px', right: '16px', zIndex: 30 }}>
+    <div style={{ position: 'fixed', top: '16px', right: '16px', zIndex: 30, display: 'flex', alignItems: 'center', gap: '10px' }}>
+        {(adminUser || signedInEmail) && (
+          <button
+            type="button"
+            onClick={() => {
+              setWorkWithUsInitialView('apply');
+              setShowWorkWithUs(true);
+            }}
+            style={{
+              background: 'rgba(20, 20, 20, 0.9)',
+              border: '1px solid rgba(255, 255, 255, 0.2)',
+              color: '#fff',
+              padding: '9px 13px',
+              borderRadius: '20px',
+              fontSize: '13px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              backdropFilter: 'blur(4px)',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.4)'
+            }}
+          >
+            Work With Us
+          </button>
+        )}
         {adminUser ? (
           <button
             onClick={() => {
@@ -236,6 +292,24 @@ export const App = () => {
               <span style={{ color: '#fff', fontSize: '12px', fontWeight: 'bold' }}>ME</span>
             )}
           </button>
+        ) : signedInEmail ? (
+          <span
+            style={{
+              maxWidth: '220px',
+              overflow: 'hidden',
+              color: '#fff',
+              fontSize: '13px',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              padding: '8px 12px',
+              borderRadius: '20px',
+              background: 'rgba(20, 20, 20, 0.85)',
+              backdropFilter: 'blur(4px)'
+            }}
+            title={signedInEmail}
+          >
+            {signedInEmail}
+          </span>
         ) : (
           <button
             onClick={() => {

@@ -23,6 +23,7 @@ type AdministrativePortalProps = {
   onAdminCreated?: (user: AdminUser) => void;
   onAdminUpdated?: (user: AdminUser) => void;
   onAdminLogout?: () => void;
+  onOpenAgreementAdmin?: () => void;
   onPlayVideo?: (video: AdminVideo) => void;
   user?: any;
   onClose?: () => void;
@@ -38,6 +39,7 @@ export default function AdministrativePortal({
   onAdminCreated = () => {},
   onAdminUpdated = () => {},
   onAdminLogout,
+  onOpenAgreementAdmin,
 }: AdministrativePortalProps) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -57,6 +59,7 @@ export default function AdministrativePortal({
   const [successMessage, setSuccessMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUpdatingAvatar, setIsUpdatingAvatar] = useState(false);
+  const [canManageAgreements, setCanManageAgreements] = useState(false);
   const [, setRefreshVersion] = useState(0);
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
   const profileAvatarInputRef = useRef<HTMLInputElement | null>(null);
@@ -64,6 +67,22 @@ export default function AdministrativePortal({
   useEffect(() => {
     setProfileAvatar(adminUser?.avatar ?? '');
   }, [adminUser?.avatar]);
+
+  useEffect(() => {
+    let isCancelled = false;
+    void supabase.auth.getUser().then(({ data, error }) => {
+      if (error) {
+        console.error('Unable to verify Work With Us administrator access:', error.message);
+        return;
+      }
+      if (!isCancelled) {
+        setCanManageAgreements(data.user?.app_metadata?.revela_agreement_admin === true);
+      }
+    });
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (view !== 'profile' && view !== 'library') return undefined;
@@ -321,6 +340,15 @@ export default function AdministrativePortal({
         </button>
 
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+          {canManageAgreements && onOpenAgreementAdmin && (
+            <button
+              type="button"
+              onClick={onOpenAgreementAdmin}
+              style={{ background: 'none', border: 'none', color: '#aaa', fontSize: '13px', cursor: 'pointer' }}
+            >
+              Work With Us
+            </button>
+          )}
           <button
             type="button"
             onClick={() => onNavigate('rules')}

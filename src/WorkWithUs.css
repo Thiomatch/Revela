@@ -1,0 +1,512 @@
+.wwu-shell {
+  min-height: 100vh;
+  padding: 20px;
+  background: #0a0a0c;
+  color: #fff;
+  font-family: inherit;
+}
+
+.wwu-header,
+.wwu-header-actions,
+.wwu-section-heading,
+.wwu-card-heading,
+.wwu-card-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.wwu-header {
+  max-width: 1040px;
+  margin: 0 auto 22px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #29292e;
+}
+
+.wwu-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.wwu-brand span {
+  padding: 3px 8px;
+  border-radius: 5px;
+  background: #e50914;
+}
+
+.wwu-header p {
+  margin: 5px 0 0;
+  color: #a4a4ab;
+  font-size: 13px;
+}
+
+.wwu-header-actions {
+  justify-content: flex-end;
+}
+
+.wwu-signed-in {
+  max-width: 240px;
+  overflow: hidden;
+  color: #b8b8bd;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wwu-close {
+  width: 38px;
+  height: 38px;
+  border: 1px solid #39393f;
+  border-radius: 50%;
+  background: #18181b;
+  color: #fff;
+  cursor: pointer;
+  font-size: 24px;
+}
+
+.wwu-content,
+.wwu-tabs,
+.wwu-auth-panel {
+  width: min(100%, 1040px);
+  margin: 0 auto;
+}
+
+.wwu-tabs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  margin-bottom: 20px;
+  padding-bottom: 2px;
+}
+
+.wwu-tabs button {
+  flex: 0 0 auto;
+  border: 1px solid #33333a;
+  border-radius: 8px;
+  padding: 9px 13px;
+  background: #151518;
+  color: #b8b8bd;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.wwu-tabs button.is-selected {
+  border-color: #e50914;
+  background: rgba(229, 9, 20, 0.12);
+  color: #fff;
+}
+
+.wwu-panel {
+  border: 1px solid #2a2a2f;
+  border-radius: 14px;
+  background: #141416;
+}
+
+.wwu-auth-panel {
+  max-width: 470px;
+  padding: 26px;
+}
+
+.wwu-auth-panel h1,
+.wwu-section-heading h1 {
+  margin: 0;
+  font-size: 24px;
+}
+
+.wwu-auth-panel h1 {
+  margin-bottom: 8px;
+}
+
+.wwu-muted {
+  color: #a1a1a8;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.wwu-eyebrow {
+  margin: 0 0 7px;
+  color: #ef343d;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+}
+
+.wwu-form,
+.wwu-form-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.wwu-form {
+  margin-top: 20px;
+}
+
+.wwu-form label,
+.wwu-form-grid label,
+.wwu-admin-filters label,
+.wwu-admin-signature label {
+  display: grid;
+  gap: 7px;
+  color: #d3d3d8;
+  font-size: 12px;
+}
+
+.wwu-shell input,
+.wwu-shell textarea,
+.wwu-shell select {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid #39393f;
+  border-radius: 8px;
+  padding: 10px 11px;
+  background: #0f0f11;
+  color: #fff;
+  font: inherit;
+  font-size: 14px;
+}
+
+.wwu-shell input:focus,
+.wwu-shell textarea:focus,
+.wwu-shell select:focus {
+  outline: 2px solid rgba(229, 9, 20, 0.55);
+  outline-offset: 1px;
+}
+
+.wwu-shell input[readonly] {
+  color: #aaa;
+  background: #19191c;
+}
+
+.wwu-auth-switch {
+  margin: 18px 0 0;
+  color: #aaa;
+  font-size: 13px;
+  text-align: center;
+}
+
+.wwu-auth-switch button {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #ff454d;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+}
+
+.wwu-button {
+  min-height: 40px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 9px 13px;
+  color: #fff;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  transition: filter 0.15s ease, opacity 0.15s ease;
+}
+
+.wwu-button:hover:not(:disabled) {
+  filter: brightness(1.13);
+}
+
+.wwu-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.wwu-button-primary {
+  background: #e50914;
+}
+
+.wwu-button-secondary {
+  border-color: #414148;
+  background: #252529;
+}
+
+.wwu-button-danger {
+  border-color: #8f282e;
+  background: #45191c;
+}
+
+.wwu-alert {
+  width: min(100% - 40px, 1040px);
+  margin: 0 auto 16px;
+  border: 1px solid;
+  border-radius: 9px;
+  padding: 11px 13px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.wwu-alert-error {
+  border-color: #a9363e;
+  background: rgba(229, 9, 20, 0.13);
+  color: #ff9a9f;
+}
+
+.wwu-alert-success {
+  border-color: #286744;
+  background: rgba(40, 167, 69, 0.12);
+  color: #9de0ad;
+}
+
+.wwu-section-heading {
+  margin: 8px 0 18px;
+}
+
+.wwu-section-heading h1 {
+  font-size: 22px;
+}
+
+.wwu-document {
+  margin-bottom: 18px;
+  padding: clamp(18px, 4vw, 32px);
+}
+
+.wwu-document h2 {
+  margin: 0 0 4px;
+  font-size: 18px;
+}
+
+.wwu-document h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.wwu-version {
+  color: #92929a;
+  font-size: 11px;
+}
+
+.wwu-document pre,
+.wwu-agreement-details pre {
+  margin: 16px 0 0;
+  color: #dedee2;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.62;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.wwu-application-form,
+.wwu-confirmation,
+.wwu-existing-application {
+  margin-bottom: 24px;
+  padding: clamp(18px, 4vw, 26px);
+}
+
+.wwu-application-form h2,
+.wwu-confirmation h2,
+.wwu-existing-application h2 {
+  margin: 0 0 8px;
+  font-size: 18px;
+}
+
+.wwu-form-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 18px;
+}
+
+.wwu-form-full {
+  grid-column: 1 / -1;
+}
+
+.wwu-shell textarea {
+  resize: vertical;
+}
+
+.wwu-acceptance {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 20px 0;
+  color: #e4e4e8;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.wwu-shell .wwu-acceptance input {
+  flex: 0 0 18px;
+  width: 18px;
+  min-height: 18px;
+  height: 18px;
+  margin: 1px 0 0;
+  accent-color: #e50914;
+}
+
+.wwu-confirmation > p:not(.wwu-eyebrow),
+.wwu-existing-application p {
+  color: #c1c1c7;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.wwu-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 18px;
+  margin: 18px 0;
+  color: #9999a1;
+  font-size: 12px;
+}
+
+.wwu-detail-grid strong {
+  display: block;
+  margin-top: 3px;
+  color: #eee;
+  font-size: 13px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.wwu-card-actions {
+  flex-wrap: wrap;
+  justify-content: flex-start;
+}
+
+.wwu-admin-filters,
+.wwu-admin-signature {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.wwu-admin-signature {
+  border: 1px solid #2a2a2f;
+  border-radius: 12px;
+  padding: 14px;
+  background: #111113;
+}
+
+.wwu-agreement-list {
+  display: grid;
+  gap: 14px;
+  margin: 18px 0 30px;
+}
+
+.wwu-admin-card {
+  padding: 18px;
+}
+
+.wwu-card-heading {
+  align-items: flex-start;
+}
+
+.wwu-card-heading h2 {
+  margin: 0 0 5px;
+  font-size: 17px;
+}
+
+.wwu-card-heading p {
+  margin: 0;
+  color: #a4a4ab;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.wwu-status {
+  flex: 0 0 auto;
+  border: 1px solid #555;
+  border-radius: 999px;
+  padding: 5px 9px;
+  color: #ddd;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.status-active,
+.status-accepted_by_revela {
+  border-color: #286744;
+  color: #9de0ad;
+}
+
+.status-rejected,
+.status-terminated {
+  border-color: #8f282e;
+  color: #ff9a9f;
+}
+
+.wwu-agreement-details {
+  margin-top: 16px;
+  border-top: 1px solid #303036;
+  padding-top: 12px;
+}
+
+.wwu-agreement-details summary {
+  color: #c8c8ce;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.wwu-agreement-details p {
+  color: #bdbdc4;
+  font-size: 12px;
+}
+
+.wwu-rejection-reason {
+  border-left: 2px solid #e50914;
+  padding-left: 10px;
+  color: #ffb2b6;
+  font-size: 12px;
+}
+
+.wwu-empty {
+  border: 1px dashed #39393f;
+  border-radius: 10px;
+  padding: 22px;
+  color: #aaa;
+  font-size: 13px;
+  text-align: center;
+}
+
+@media (max-width: 700px) {
+  .wwu-shell {
+    padding: 14px;
+  }
+
+  .wwu-header {
+    align-items: flex-start;
+  }
+
+  .wwu-header-actions {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .wwu-signed-in {
+    display: none;
+  }
+
+  .wwu-form-grid,
+  .wwu-detail-grid,
+  .wwu-admin-filters,
+  .wwu-admin-signature {
+    grid-template-columns: 1fr;
+  }
+
+  .wwu-form-full {
+    grid-column: auto;
+  }
+
+  .wwu-section-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .wwu-card-heading {
+    flex-direction: column;
+  }
+
+  .wwu-card-actions .wwu-button,
+  .wwu-confirmation .wwu-card-actions .wwu-button {
+    width: 100%;
+  }
+}
