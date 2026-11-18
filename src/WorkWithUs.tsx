@@ -7,8 +7,6 @@ import {
   getActiveAgreementVersion,
   getAllWorkAgreements,
   getMyWorkAgreements,
-  generateWorkAgreementPdf,
-  printAgreementPdfInBrowser,
   reviewWorkAgreement,
   submitWorkAgreement,
   terminateWorkAgreement,
@@ -305,15 +303,6 @@ export default function WorkWithUs({ onClose, initialView = 'apply' }: WorkWithU
     setIsConfirming(true);
   };
 
-  const createApplicantPdf = async (agreement: WorkWithUsAgreement) => {
-    if (!user) throw new Error('Sign in before generating an agreement PDF.');
-    const updatedAgreement = await generateWorkAgreementPdf(agreement.id);
-    setAgreements((current) => current.some((item) => item.id === agreement.id)
-      ? replaceAgreement(current, updatedAgreement)
-      : [updatedAgreement, ...current]);
-    return updatedAgreement;
-  };
-
   const confirmSubmission = async () => {
     setErrorMessage('');
     setMessage('');
@@ -348,29 +337,25 @@ export default function WorkWithUs({ onClose, initialView = 'apply' }: WorkWithU
       setAgreements((current) => [agreement, ...current]);
       setIsConfirming(false);
       setAgreementView('mine');
-      try {
-        await createApplicantPdf(agreement);
-        setMessage('Your signed agreement was submitted successfully. Download it from My Agreements.');
-      } catch (error) {
-        setErrorMessage(`Your agreement was submitted, but the server PDF is unavailable: ${error instanceof Error ? error.message : 'Unknown error'}. You can create a browser PDF from My Agreements.`);
-      }
+      setMessage('Your signed agreement was submitted successfully. Download a PDF from My Agreements.');
     } catch (error) {
       setLocalSignedAgreement(localDocument);
       setIsConfirming(false);
-      setErrorMessage(`Your agreement could not be submitted or recorded: ${error instanceof Error ? error.message : 'Unknown error'}. You can still print a browser copy, but it will not be submitted to REVELA.`);
+      setErrorMessage(`Your agreement could not be submitted or recorded: ${error instanceof Error ? error.message : 'Unknown error'}. You can still download a local PDF copy, but it will not be submitted to REVELA.`);
     } finally {
       setIsSubmittingAgreement(false);
     }
   };
 
-  const handleBrowserPdf = (agreement: BrowserAgreementDocument) => {
+  const handleDownload = async (agreement: BrowserAgreementDocument) => {
     setErrorMessage('');
     setMessage('');
     try {
-      printAgreementPdfInBrowser(agreement);
-      setMessage('The browser print dialog is open. Choose “Save as PDF” to download the signed agreement.');
+      const safeName = agreement.full_name.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '') || 'Applicant';
+      await downloadAgreementPdf(agreement, `REVELA-Agreement-${safeName}.pdf`);
+      setMessage('Your agreement PDF has been downloaded.');
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'The browser PDF could not be opened.');
+      setErrorMessage(error instanceof Error ? error.message : 'The agreement PDF could not be generated.');
     }
   };
 
@@ -407,33 +392,12 @@ export default function WorkWithUs({ onClose, initialView = 'apply' }: WorkWithU
       });
       setAdminAgreements((current) => replaceAgreement(current, updated));
       if (decision === 'accepted') {
-        try {
-          await regenerateFinalPdf(updated);
-          setMessage(`Agreement for ${updated.full_name} accepted and final PDF generated.`);
-        } catch (error) {
-          setErrorMessage(
-            `Agreement accepted, but the final PDF could not be generated: ${error instanceof Error ? error.message : 'Unknown error'}. Use Regenerate final PDF to retry.`,
-          );
-        }
+        setMessage(`Agreement for ${updated.full_name} accepted and signed. Download the final PDF from the application.`);
       } else {
         setMessage(`Agreement for ${updated.full_name} updated: ${statusLabel(updated.status)}.`);
       }
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'The agreement review could not be saved.');
-    } finally {
-      setBusyAgreementId('');
-    }
-  };
-
-  const regenerateFinalPdf = async (agreement: WorkWithUsAgreement) => {
-    if (!agreement.administrator_name || !agreement.administrator_signature_text || !agreement.administrator_signed_at) {
-      throw new Error('The REVELA signature details are not complete.');
-    }
-    setBusyAgreementId(agreement.id);
-    try {
-      const updatedAgreement = await generateWorkAgreementPdf(agreement.id, true);
-      setAdminAgreements((current) => replaceAgreement(current, updatedAgreement));
-      setAgreements((current) => current.map((item) => item.id === agreement.id ? updatedAgreement : item));
     } finally {
       setBusyAgreementId('');
     }
@@ -471,22 +435,6 @@ export default function WorkWithUs({ onClose, initialView = 'apply' }: WorkWithU
       setErrorMessage(error instanceof Error ? error.message : 'The agreement could not be terminated.');
     } finally {
       setBusyAgreementId('');
-    }
-  };
-
-  const handleDownload = async (agreement: WorkWithUsAgreement, final = false) => {
-    const path = final
-      ? agreement.final_pdf_storage_path
-      : agreement.final_pdf_storage_path || agreement.pdf_storage_path;
-    if (!path) {
-      setErrorMessage('The agreement PDF is not ready yet.');
-      return;
-    }
-    setErrorMessage('');
-    try {
-      await downloadAgreementPdf(path, `REVELA-Agreement-${agreement.id}.pdf`);
-    } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'The agreement could not be downloaded.');
     }
   };
 
@@ -671,13 +619,8 @@ export default function WorkWithUs({ onClose, initialView = 'apply' }: WorkWithU
                     <span>Submitted <strong>{new Date(agreement.submitted_at).toLocaleString()}</strong></span>
                   </div>
                   <div className="wwu-card-actions">
-                    {(agreement.final_pdf_storage_path || agreement.pdf_storage_path) && (
-                      <button type="button" className="wwu-button wwu-button-secondary" onClick={() => void handleDownload(agreement)}>
-                        Download PDF
-                      </button>
-                    )}
-                    <button type="button" className="wwu-button wwu-button-secondary" onClick={() => handleBrowserPdf(agreement)}>
-                      Print / Save PDF in browser
+                    <button type="button" className="wwu-button wwu-button-secondary" onClick={() => handleDownload(agreement)}>
+                      Download PDF
                     </button>
                     {(agreement.status === 'submitted' || agreement.status === 'pending_review') && (
                       <>
@@ -694,9 +637,6 @@ export default function WorkWithUs({ onClose, initialView = 'apply' }: WorkWithU
                     )}
                     {(agreement.status === 'accepted_by_revela' || agreement.status === 'active') && (
                       <>
-                        <button type="button" className="wwu-button wwu-button-secondary" disabled={busyAgreementId === agreement.id} onClick={() => void regenerateFinalPdf(agreement).catch((error: unknown) => setErrorMessage(error instanceof Error ? error.message : 'Final PDF regeneration failed.'))}>
-                          {busyAgreementId === agreement.id ? 'Generating…' : 'Regenerate final PDF'}
-                        </button>
                         {agreement.status === 'accepted_by_revela' && (
                           <button type="button" className="wwu-button wwu-button-primary" disabled={busyAgreementId === agreement.id || !commencementDate} onClick={() => void activateAgreement(agreement)}>
                             Set active
@@ -739,9 +679,9 @@ export default function WorkWithUs({ onClose, initialView = 'apply' }: WorkWithU
           {localSignedAgreement && (
             <div className="wwu-panel wwu-existing-application" role="status">
               <h2>Browser copy available — not submitted</h2>
-              <p>Your signed copy could not be recorded in REVELA. Printing it does not submit an application.</p>
-              <button type="button" className="wwu-button wwu-button-primary" onClick={() => handleBrowserPdf(localSignedAgreement)}>
-                Print / Save signed PDF
+              <p>Your signed copy could not be recorded in REVELA. Downloading it does not submit an application.</p>
+              <button type="button" className="wwu-button wwu-button-primary" onClick={() => handleDownload(localSignedAgreement)}>
+                Download signed PDF
               </button>
             </div>
           )}
@@ -765,13 +705,8 @@ export default function WorkWithUs({ onClose, initialView = 'apply' }: WorkWithU
                     <span>REVELA approval <strong>{agreement.administrator_signed_at ? `Approved ${new Date(agreement.administrator_signed_at).toLocaleString()}` : 'Pending'}</strong></span>
                   </div>
                   <div className="wwu-card-actions">
-                    {(agreement.final_pdf_storage_path || agreement.pdf_storage_path) && (
-                      <button type="button" className="wwu-button wwu-button-primary" onClick={() => void handleDownload(agreement)}>
-                        Download signed agreement
-                      </button>
-                    )}
-                    <button type="button" className="wwu-button wwu-button-secondary" onClick={() => handleBrowserPdf(agreement)}>
-                      Print / Save PDF in browser
+                    <button type="button" className="wwu-button wwu-button-primary" onClick={() => handleDownload(agreement)}>
+                      Download signed agreement
                     </button>
                   </div>
                   {agreement.rejection_reason && <p className="wwu-rejection-reason">REVELA’s response: {agreement.rejection_reason}</p>}
@@ -795,9 +730,9 @@ export default function WorkWithUs({ onClose, initialView = 'apply' }: WorkWithU
           {localSignedAgreement && (
             <div className="wwu-panel wwu-existing-application" role="status">
               <h2>Browser copy available — not submitted</h2>
-              <p>Your signed copy could not be recorded in REVELA. Printing it does not submit an application.</p>
-              <button type="button" className="wwu-button wwu-button-primary" onClick={() => handleBrowserPdf(localSignedAgreement)}>
-                Print / Save signed PDF
+              <p>Your signed copy could not be recorded in REVELA. Downloading it does not submit an application.</p>
+              <button type="button" className="wwu-button wwu-button-primary" onClick={() => handleDownload(localSignedAgreement)}>
+                Download signed PDF
               </button>
             </div>
           )}

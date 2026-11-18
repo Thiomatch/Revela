@@ -344,6 +344,7 @@ export default function AdministrativePortal({
             <button
               type="button"
               onClick={onOpenAgreementAdmin}
+              title="Review applicant agreements and download PDFs"
               style={{ background: 'none', border: 'none', color: '#aaa', fontSize: '13px', cursor: 'pointer' }}
             >
               Work With Us

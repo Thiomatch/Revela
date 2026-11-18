@@ -1,3 +1,4 @@
+import dejavusansFontUrl from 'dejavu-fonts-ttf/ttf/DejaVuSans.ttf?url';
 import { supabase } from './supabaseClient';
 
 export type AgreementStatus =
@@ -169,14 +170,15 @@ export type BrowserAgreementDocument = {
   agreement_snapshot: string;
   signature_text: string;
   accepted_at: string;
+  submitted_at?: string;
   status: string;
   administrator_name?: string | null;
   administrator_signature_text?: string | null;
   administrator_signed_at?: string | null;
+  administrator_reviewed_at?: string | null;
 };
 
 const agreementTable = 'revela_work_with_us_agreements';
-const agreementBucket = 'revela-agreements';
 
 function throwSupabaseError(error: { message: string } | null): void {
   if (error) throw new Error(error.message);
@@ -285,111 +287,155 @@ export async function terminateWorkAgreement(
   return data as WorkWithUsAgreement;
 }
 
-export async function generateWorkAgreementPdf(
-  agreementId: string,
-  final = false,
-): Promise<WorkWithUsAgreement> {
-  const { data, error } = await supabase.functions.invoke('generate-work-with-us-pdf', {
-    body: { agreementId, final },
+function formatPdfTimestamp(value: string | null | undefined): string {
+  if (!value) return 'Pending';
+  const timestamp = new Date(value);
+  return Number.isNaN(timestamp.getTime()) ? value : timestamp.toLocaleString();
+}
+
+let dejavuSansFontData: Promise<string> | null = null;
+
+function getDejaVuSansFontData(): Promise<string> {
+  if (!dejavuSansFontData) {
+    dejavuSansFontData = fetch(dejavusansFontUrl).then(async (response) => {
+      if (!response.ok) throw new Error('The Unicode PDF font could not be loaded.');
+      const bytes = new Uint8Array(await response.arrayBuffer());
+      let binary = '';
+      const chunkSize = 0x8000;
+      for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+        binary += String.fromCharCode(...bytes.subarray(offset, offset + chunkSize));
+      }
+      return btoa(binary);
+    }).catch((error: unknown) => {
+      dejavuSansFontData = null;
+      throw error;
+    });
+  }
+  return dejavuSansFontData;
+}
+
+export async function downloadAgreementPdf(
+  agreement: BrowserAgreementDocument,
+  fileName?: string,
+): Promise<void> {
+  const [{ jsPDF }, fontData] = await Promise.all([
+    import('jspdf'),
+    getDejaVuSansFontData(),
+  ]);
+  const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  pdf.addFileToVFS('DejaVuSans.ttf', fontData);
+  pdf.addFont('DejaVuSans.ttf', 'DejaVuSans', 'normal');
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+  const margin = 18;
+  const contentWidth = pageWidth - margin * 2;
+  const labelWidth = 54;
+  let y = 20;
+
+  const ensureSpace = (height: number) => {
+    if (y + height > pageHeight - 18) {
+      pdf.addPage();
+      y = 20;
+    }
+  };
+
+  const addParagraph = (
+    text: string,
+    options: { bold?: boolean; fontSize?: number; color?: [number, number, number]; after?: number } = {},
+  ) => {
+    const fontSize = options.fontSize ?? 9.5;
+    const lineHeight = fontSize * 0.48;
+    pdf.setFont(options.bold ? 'helvetica' : 'DejaVuSans', options.bold ? 'bold' : 'normal');
+    pdf.setFontSize(fontSize);
+    pdf.setTextColor(...(options.color ?? [35, 35, 35]));
+    const lines = pdf.splitTextToSize(text, contentWidth) as string[];
+    ensureSpace(lines.length * lineHeight + (options.after ?? 1));
+    pdf.text(lines, margin, y);
+    y += lines.length * lineHeight + (options.after ?? 1);
+  };
+
+  const addSectionHeading = (heading: string) => {
+    y += 3;
+    addParagraph(heading, { bold: true, fontSize: 10.5, color: [169, 0, 10], after: 2 });
+  };
+
+  const addDetail = (label: string, value: string) => {
+    pdf.setFont('DejaVuSans', 'normal');
+    pdf.setFontSize(9);
+    const lines = pdf.splitTextToSize(value || 'Not provided', contentWidth - labelWidth - 3) as string[];
+    const lineHeight = 4.5;
+    ensureSpace(Math.max(1, lines.length) * lineHeight + 1);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(65, 65, 65);
+    pdf.text(label, margin, y);
+    pdf.setFont('DejaVuSans', 'normal');
+    pdf.setTextColor(35, 35, 35);
+    pdf.text(lines, margin + labelWidth, y);
+    y += Math.max(1, lines.length) * lineHeight + 1;
+  };
+
+  pdf.setProperties({
+    title: `REVELA Marketing Engagement Agreement - ${agreement.full_name}`,
+    subject: `Agreement version ${agreement.agreement_version}`,
+    author: 'REVELA',
   });
-  throwSupabaseError(error);
-  if (!data) throw new Error('The agreement PDF could not be generated.');
-  return data as WorkWithUsAgreement;
-}
+  pdf.setFont('helvetica', 'bold');
+  pdf.setFontSize(20);
+  pdf.setTextColor(169, 0, 10);
+  pdf.text('REVELA', margin, y);
+  y += 8;
+  addParagraph('SOCIAL MEDIA MARKETING ENGAGEMENT AGREEMENT', { bold: true, fontSize: 12, after: 5 });
 
-export async function downloadAgreementPdf(storagePath: string, fileName: string): Promise<void> {
-  const { data, error } = await supabase.storage
-    .from(agreementBucket)
-    .createSignedUrl(storagePath, 60);
-  throwSupabaseError(error);
-  if (!data?.signedUrl) throw new Error('A secure download link could not be created.');
+  addSectionHeading('APPLICANT DETAILS');
+  addDetail('Full legal name', agreement.full_name);
+  addDetail('REVELA username', agreement.username || 'Not provided');
+  addDetail('Email address', agreement.email);
+  addDetail('Phone number', agreement.phone);
+  addDetail('Residential address', agreement.residential_address || 'Not provided');
+  addDetail('Application date', agreement.application_date);
+  addDetail('Requested commencement', agreement.requested_commencement_date || 'To be agreed');
+  addDetail('Agreed commencement', agreement.commencement_date || 'To be agreed');
+  addDetail('Agreement version', agreement.agreement_version);
+  addDetail('Submitted at', formatPdfTimestamp(agreement.submitted_at));
+  addDetail('Applicant signed at', formatPdfTimestamp(agreement.accepted_at));
+  addDetail('REVELA reviewed at', formatPdfTimestamp(agreement.administrator_reviewed_at));
 
-  const link = document.createElement('a');
-  link.href = data.signedUrl;
-  link.download = fileName;
-  link.target = '_blank';
-  link.rel = 'noopener noreferrer';
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-}
+  addSectionHeading('AGREEMENT TERMS ACCEPTED');
+  for (const paragraph of agreement.agreement_snapshot.split(/\r?\n/)) {
+    if (!paragraph.trim()) {
+      y += 2;
+      continue;
+    }
+    const isHeading = /^\d+\.\s|^[A-C]\.\s/.test(paragraph);
+    addParagraph(paragraph, { bold: isHeading, fontSize: isHeading ? 9.5 : 9, after: 1.5 });
+  }
 
-function escapeHtml(value: string): string {
-  return value.replace(/[&<>"']/g, (character) => ({
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&#39;',
-  })[character] ?? character);
-}
+  addSectionHeading('SIGNATURES');
+  addParagraph(`Applicant electronic signature: ${agreement.signature_text}`);
+  addParagraph(`Applicant signed at: ${formatPdfTimestamp(agreement.accepted_at)}`);
+  addParagraph('REVELA ADMINISTRATOR SIGNATURE', { bold: true, after: 2 });
+  if (agreement.administrator_name && agreement.administrator_signature_text && agreement.administrator_signed_at) {
+    addParagraph(`REVELA representative: ${agreement.administrator_name}`);
+    addParagraph(`REVELA administrator electronic signature: ${agreement.administrator_signature_text}`);
+    addParagraph(`REVELA administrator signed at: ${formatPdfTimestamp(agreement.administrator_signed_at)}`);
+  } else if (agreement.administrator_name) {
+    addParagraph(`REVELA representative: ${agreement.administrator_name}`);
+    addParagraph(`REVELA administrator signature: Not signed (${agreement.status.replace(/_/g, ' ')})`);
+  } else {
+    addParagraph('Pending REVELA review');
+  }
+  addParagraph(`Agreement status: ${agreement.status.replace(/_/g, ' ')}`, { after: 0 });
 
-export function printAgreementPdfInBrowser(agreement: BrowserAgreementDocument): void {
-  const printWindow = window.open('', '_blank');
-  if (!printWindow) throw new Error('The print window was blocked. Allow pop-ups and try again.');
-  printWindow.opener = null;
+  const pageCount = pdf.getNumberOfPages();
+  for (let page = 1; page <= pageCount; page += 1) {
+    pdf.setPage(page);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(8);
+    pdf.setTextColor(110, 110, 110);
+    pdf.text(`Agreement version ${agreement.agreement_version}`, margin, pageHeight - 9);
+    pdf.text(`Page ${page} of ${pageCount}`, pageWidth - margin, pageHeight - 9, { align: 'right' });
+  }
 
-  const details = [
-    ['Full legal name', agreement.full_name],
-    ['REVELA username', agreement.username || 'Not provided'],
-    ['Email address', agreement.email],
-    ['Phone number', agreement.phone],
-    ['Residential address', agreement.residential_address || 'Not provided'],
-    ['Application date', agreement.application_date],
-    ['Requested commencement date', agreement.requested_commencement_date || 'To be agreed'],
-    ['Agreed commencement date', agreement.commencement_date || 'To be agreed'],
-    ['Agreement version', agreement.agreement_version],
-    ['Applicant signed at', new Date(agreement.accepted_at).toLocaleString()],
-  ];
-  const detailRows = details.map(([label, value]) => (
-    `<tr><th>${escapeHtml(label)}</th><td>${escapeHtml(value)}</td></tr>`
-  )).join('');
-  const terms = escapeHtml(agreement.agreement_snapshot);
-  const representativeSignature = agreement.administrator_name
-    && agreement.administrator_signature_text
-    && agreement.administrator_signed_at
-    ? `<p>REVELA representative: ${escapeHtml(agreement.administrator_name)}</p>
-       <p>REVELA representative electronic signature: ${escapeHtml(agreement.administrator_signature_text)}</p>
-       <p>REVELA representative signed at: ${escapeHtml(new Date(agreement.administrator_signed_at).toLocaleString())}</p>`
-    : '<p>REVELA representative signature: Pending REVELA review</p>';
-  const title = `REVELA Agreement - ${agreement.full_name}`;
-
-  printWindow.document.open();
-  printWindow.document.write(`<!doctype html>
-    <html lang="en">
-      <head>
-        <meta charset="utf-8">
-        <title>${escapeHtml(title)}</title>
-        <style>
-          @page { size: A4; margin: 18mm; }
-          body { color: #202124; font: 10pt Arial, sans-serif; line-height: 1.45; }
-          h1 { color: #a9000a; font-size: 20pt; margin-bottom: 4px; }
-          h2 { font-size: 13pt; margin-top: 0; }
-          h3 { color: #a9000a; font-size: 11pt; margin: 18px 0 6px; }
-          table { border-collapse: collapse; width: 100%; margin: 12px 0 20px; }
-          th, td { border-bottom: 1px solid #ddd; padding: 6px; text-align: left; vertical-align: top; }
-          th { width: 34%; }
-          pre { font: inherit; white-space: pre-wrap; overflow-wrap: anywhere; }
-          .no-print { background: #f3f3f3; padding: 10px; }
-          @media print { .no-print { display: none; } }
-        </style>
-      </head>
-      <body>
-        <p class="no-print">In the print dialog, choose “Save as PDF” to download this signed agreement.</p>
-        <h1>REVELA</h1>
-        <h2>SOCIAL MEDIA MARKETING ENGAGEMENT AGREEMENT</h2>
-        <h3>APPLICANT DETAILS</h3>
-        <table><tbody>${detailRows}</tbody></table>
-        <h3>AGREEMENT TERMS ACCEPTED</h3>
-        <pre>${terms}</pre>
-        <h3>SIGNATURES</h3>
-        <p>Applicant electronic signature: ${escapeHtml(agreement.signature_text)}</p>
-        <p>Applicant signed at: ${escapeHtml(new Date(agreement.accepted_at).toLocaleString())}</p>
-        ${representativeSignature}
-        <p>Agreement status: ${escapeHtml(agreement.status.replace(/_/g, ' '))}</p>
-      </body>
-    </html>`);
-  printWindow.document.close();
-  printWindow.focus();
-  printWindow.print();
+  const safeName = agreement.full_name.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '') || 'Applicant';
+  pdf.save(fileName ?? `REVELA-Agreement-${safeName}.pdf`);
 }
