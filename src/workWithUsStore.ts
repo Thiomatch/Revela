@@ -439,19 +439,39 @@ export async function downloadAgreementPdf(
   const safeName = agreement.full_name.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '') || 'Applicant';
   const pdfOutput = pdf.output('arraybuffer');
   const blob = new Blob([pdfOutput], { type: 'application/octet-stream' });
+  const requestedFileName = fileName ?? `REVELA-Marketing-Agreement-${safeName}.pdf`;
+  const downloadFileName = requestedFileName.toLowerCase().endsWith('.pdf')
+    ? requestedFileName
+    : `${requestedFileName}.pdf`;
+  const legacyNavigator = navigator as Navigator & {
+    msSaveOrOpenBlob?: (file: Blob, defaultName?: string) => boolean;
+  };
+  if (legacyNavigator.msSaveOrOpenBlob?.call(navigator, blob, downloadFileName)) {
+    return;
+  }
+
+  const isMobileBrowser = /Android|iPhone|iPad|iPod|Mobile|Tablet|IEMobile|BlackBerry|Opera Mini/i.test(navigator.userAgent)
+    || (/Macintosh/i.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+  let usedDirectNavigation = isMobileBrowser;
   const objectUrl = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = objectUrl;
-  const requestedFileName = fileName ?? `REVELA-Marketing-Agreement-${safeName}.pdf`;
-  link.download = requestedFileName.toLowerCase().endsWith('.pdf')
-    ? requestedFileName
-    : `${requestedFileName}.pdf`;
+  link.download = downloadFileName;
   link.style.display = 'none';
   try {
-    document.body.appendChild(link);
-    link.click();
+    if (isMobileBrowser) {
+      window.location.href = objectUrl;
+    } else {
+      document.body.appendChild(link);
+      try {
+        link.click();
+      } catch {
+        usedDirectNavigation = true;
+        window.location.href = objectUrl;
+      }
+    }
   } finally {
     link.remove();
-    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), usedDirectNavigation ? 60000 : 1000);
   }
 }
