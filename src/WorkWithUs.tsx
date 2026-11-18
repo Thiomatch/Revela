@@ -6,11 +6,13 @@ import {
   getActiveAgreementVersion,
   getAllWorkAgreements,
   getMyWorkAgreements,
+  loadAgreementPdfGenerator,
   reviewWorkAgreement,
   submitWorkAgreement,
   terminateWorkAgreement,
   type AgreementStatus,
   type AgreementVersion,
+  type AgreementPdfGenerator,
   type BrowserAgreementDocument,
   type WorkWithUsAgreement,
 } from './workWithUsStore';
@@ -78,106 +80,6 @@ function replaceAgreement(
   return agreements.map((agreement) => agreement.id === updated.id ? updated : agreement);
 }
 
-const htmlEscapeMap: Record<string, string> = {
-  '&': '&amp;',
-  '<': '&lt;',
-  '>': '&gt;',
-  '"': '&quot;',
-  "'": '&#39;',
-};
-
-function escapeHtml(value: string): string {
-  return value.replace(/[&<>"']/g, (character) => htmlEscapeMap[character] ?? character);
-}
-
-function formatTimestamp(value?: string | null): string {
-  if (!value) return 'Not recorded';
-  const timestamp = new Date(value);
-  return Number.isNaN(timestamp.getTime()) ? value : timestamp.toLocaleString();
-}
-
-function agreementHtml(agreement: BrowserAgreementDocument): string {
-  const details: Array<[string, string]> = [
-    ['Full legal name', agreement.full_name],
-    ['REVELA username', agreement.username || 'Not provided'],
-    ['Email address', agreement.email],
-    ['Phone number', agreement.phone],
-    ['Residential address', agreement.residential_address || 'Not provided'],
-    ['Application date', formatDate(agreement.application_date)],
-    ['Requested commencement', formatDate(agreement.requested_commencement_date)],
-    ['Agreed commencement', formatDate(agreement.commencement_date)],
-    ['Agreement version', agreement.agreement_version],
-    ['Submitted', formatTimestamp(agreement.submitted_at)],
-    ['Applicant signed', formatTimestamp(agreement.accepted_at)],
-    ['REVELA reviewed', formatTimestamp(agreement.administrator_reviewed_at)],
-    ['Status', agreement.status.replace(/_/g, ' ')],
-  ];
-  const detailMarkup = details.map(([label, value]) => (
-    `<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd></div>`
-  )).join('');
-
-  return `<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>${escapeHtml(`REVELA Marketing Agreement - ${agreement.full_name}`)}</title>
-  <style>
-    :root { color-scheme: light; font-family: Arial, Helvetica, sans-serif; color: #19191c; }
-    body { margin: 0; padding: 32px 16px; background: #f0f0f2; }
-    main { box-sizing: border-box; max-width: 860px; margin: auto; padding: 42px; background: white; }
-    header { margin-bottom: 28px; border-bottom: 2px solid #e50914; padding-bottom: 16px; }
-    header p { margin: 0 0 8px; color: #b9000b; font-size: 15px; font-weight: 800; letter-spacing: .12em; }
-    h1 { margin: 0 0 8px; font-size: 24px; }
-    header span { color: #555; font-size: 12px; }
-    section { margin: 24px 0; }
-    h2 { margin: 0 0 12px; border-bottom: 1px solid #ccc; padding-bottom: 6px; font-size: 16px; }
-    dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 24px; margin: 0; }
-    dt { color: #555; font-size: 11px; font-weight: 700; }
-    dd { margin: 3px 0 0; overflow-wrap: anywhere; font-size: 13px; }
-    pre { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font: 11px/1.55 Arial, Helvetica, sans-serif; }
-    section > p { font-size: 13px; }
-    @media (max-width: 600px) {
-      body { padding: 12px; }
-      main { padding: 22px; }
-      h1 { font-size: 20px; }
-      dl { grid-template-columns: 1fr; }
-    }
-    @media print {
-      body { padding: 0; background: white; }
-      main { max-width: none; padding: 0; }
-      @page { margin: 16mm; }
-    }
-  </style>
-</head>
-<body>
-  <main>
-    <header>
-      <p>REVELA</p>
-      <h1>Social Media Marketing Engagement Agreement</h1>
-      <span>Agreement version ${escapeHtml(agreement.agreement_version)}</span>
-    </header>
-    <section>
-      <h2>Applicant details</h2>
-      <dl>${detailMarkup}</dl>
-    </section>
-    <section>
-      <h2>Accepted agreement terms</h2>
-      <pre>${escapeHtml(agreement.agreement_snapshot)}</pre>
-    </section>
-    <section>
-      <h2>Electronic signatures</h2>
-      <p><strong>Applicant:</strong> ${escapeHtml(agreement.signature_text)}</p>
-      <p><strong>Applicant signed:</strong> ${escapeHtml(formatTimestamp(agreement.accepted_at))}</p>
-      <p><strong>REVELA administrator:</strong> ${escapeHtml(agreement.administrator_name || 'Pending review')}</p>
-      <p><strong>Administrator signature:</strong> ${escapeHtml(agreement.administrator_signature_text || 'Not signed')}</p>
-      <p><strong>Administrator signed:</strong> ${escapeHtml(formatTimestamp(agreement.administrator_signed_at))}</p>
-    </section>
-  </main>
-</body>
-</html>`;
-}
-
 export default function WorkWithUs({ onClose, initialView = 'apply' }: WorkWithUsProps) {
   const [user, setUser] = useState<User | null>(null);
   const [authMode, setAuthMode] = useState<AuthMode>('sign-in');
@@ -203,6 +105,8 @@ export default function WorkWithUs({ onClose, initialView = 'apply' }: WorkWithU
   const [adminLoading, setAdminLoading] = useState(false);
   const [versionLoading, setVersionLoading] = useState(false);
   const [busyAgreementId, setBusyAgreementId] = useState('');
+  const [agreementPdfGenerator, setAgreementPdfGenerator] = useState<AgreementPdfGenerator | null>(null);
+  const [isPdfGeneratorLoading, setIsPdfGeneratorLoading] = useState(true);
   const [message, setMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [searchText, setSearchText] = useState('');
@@ -213,6 +117,25 @@ export default function WorkWithUs({ onClose, initialView = 'apply' }: WorkWithU
   const [administratorSignature, setAdministratorSignature] = useState('');
   const [rejectionReason, setRejectionReason] = useState('');
   const [commencementDate, setCommencementDate] = useState('');
+
+  useEffect(() => {
+    let isMounted = true;
+    void loadAgreementPdfGenerator()
+      .then((generator) => {
+        if (isMounted) setAgreementPdfGenerator(() => generator);
+      })
+      .catch((error: unknown) => {
+        if (isMounted) {
+          setErrorMessage(error instanceof Error ? error.message : 'The agreement PDF generator could not be loaded.');
+        }
+      })
+      .finally(() => {
+        if (isMounted) setIsPdfGeneratorLoading(false);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const isAdministrator = user?.app_metadata?.revela_agreement_admin === true;
   const email = user?.email ?? '';
@@ -436,11 +359,11 @@ export default function WorkWithUs({ onClose, initialView = 'apply' }: WorkWithU
       setAgreements((current) => [agreement, ...current]);
       setIsConfirming(false);
       setAgreementView('mine');
-      setMessage('Your signed agreement was submitted successfully. Download an HTML copy from My Agreements.');
+      setMessage('Your signed agreement was submitted successfully. Download a PDF from My Agreements.');
     } catch (error) {
       setLocalSignedAgreement(localDocument);
       setIsConfirming(false);
-      setErrorMessage(`Your agreement could not be submitted or recorded: ${error instanceof Error ? error.message : 'Unknown error'}. You can still download a local HTML copy, but it will not be submitted to REVELA.`);
+      setErrorMessage(`Your agreement could not be submitted or recorded: ${error instanceof Error ? error.message : 'Unknown error'}. You can still download a local PDF copy, but it will not be submitted to REVELA.`);
     } finally {
       setIsSubmittingAgreement(false);
     }
@@ -449,30 +372,33 @@ export default function WorkWithUs({ onClose, initialView = 'apply' }: WorkWithU
   const handleDownload = (agreement: BrowserAgreementDocument) => {
     setErrorMessage('');
     setMessage('');
+    let objectUrl: string | null = null;
     try {
-      const blob = new Blob([agreementHtml(agreement)], { type: 'text/html;charset=utf-8' });
-      const fileName = 'REVELA-Marketing-Agreement.html';
-      const legacyNavigator = navigator as Navigator & {
-        msSaveOrOpenBlob?: (file: Blob, defaultName?: string) => boolean;
-      };
-      if (legacyNavigator.msSaveOrOpenBlob?.call(navigator, blob, fileName)) {
-        return;
+      if (!agreementPdfGenerator) {
+        throw new Error('The agreement PDF generator is not ready. Please try again.');
       }
-
-      const objectUrl = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = objectUrl;
-      link.download = fileName;
-      link.style.display = 'none';
-      try {
-        document.body.appendChild(link);
-        link.click();
-      } finally {
-        link.remove();
-        window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60000);
+      const safeName = agreement.full_name.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '') || 'Applicant';
+      const fileName = `REVELA-Marketing-Agreement-${safeName}.pdf`;
+      const blob = agreementPdfGenerator(agreement);
+      objectUrl = URL.createObjectURL(blob);
+      const pdfWindow = window.open(objectUrl, '_blank');
+      if (!pdfWindow) {
+        const link = document.createElement('a');
+        link.href = objectUrl;
+        link.download = fileName;
+        link.style.display = 'none';
+        try {
+          document.body.appendChild(link);
+          link.click();
+        } finally {
+          link.remove();
+        }
       }
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'The agreement HTML file could not be generated.');
+      setErrorMessage(error instanceof Error ? error.message : 'The agreement PDF could not be generated or opened.');
+    } finally {
+      const objectUrlToRevoke = objectUrl;
+      if (objectUrlToRevoke) window.setTimeout(() => URL.revokeObjectURL(objectUrlToRevoke), 600000);
     }
   };
 
@@ -509,7 +435,7 @@ export default function WorkWithUs({ onClose, initialView = 'apply' }: WorkWithU
       });
       setAdminAgreements((current) => replaceAgreement(current, updated));
       if (decision === 'accepted') {
-        setMessage(`Agreement for ${updated.full_name} accepted and signed. Download the final agreement HTML file from the application.`);
+        setMessage(`Agreement for ${updated.full_name} accepted and signed. Download the final PDF from the application.`);
       } else {
         setMessage(`Agreement for ${updated.full_name} updated: ${statusLabel(updated.status)}.`);
       }
@@ -736,8 +662,8 @@ export default function WorkWithUs({ onClose, initialView = 'apply' }: WorkWithU
                     <span>Submitted <strong>{new Date(agreement.submitted_at).toLocaleString()}</strong></span>
                   </div>
                   <div className="wwu-card-actions">
-                    <button type="button" className="wwu-button wwu-button-secondary" onClick={() => handleDownload(agreement)}>
-                      Download HTML agreement
+                    <button type="button" className="wwu-button wwu-button-secondary" onClick={() => handleDownload(agreement)} disabled={isPdfGeneratorLoading}>
+                      {isPdfGeneratorLoading ? 'Preparing PDF…' : 'Download PDF'}
                     </button>
                     {(agreement.status === 'submitted' || agreement.status === 'pending_review') && (
                       <>
@@ -797,8 +723,8 @@ export default function WorkWithUs({ onClose, initialView = 'apply' }: WorkWithU
             <div className="wwu-panel wwu-existing-application" role="status">
               <h2>Browser copy available — not submitted</h2>
               <p>Your signed copy could not be recorded in REVELA. Downloading it does not submit an application.</p>
-              <button type="button" className="wwu-button wwu-button-primary" onClick={() => handleDownload(localSignedAgreement)}>
-                Download signed agreement
+              <button type="button" className="wwu-button wwu-button-primary" onClick={() => handleDownload(localSignedAgreement)} disabled={isPdfGeneratorLoading}>
+                {isPdfGeneratorLoading ? 'Preparing PDF…' : 'Download signed agreement'}
               </button>
             </div>
           )}
@@ -822,8 +748,8 @@ export default function WorkWithUs({ onClose, initialView = 'apply' }: WorkWithU
                     <span>REVELA approval <strong>{agreement.administrator_signed_at ? `Approved ${new Date(agreement.administrator_signed_at).toLocaleString()}` : 'Pending'}</strong></span>
                   </div>
                   <div className="wwu-card-actions">
-                    <button type="button" className="wwu-button wwu-button-primary" onClick={() => handleDownload(agreement)}>
-                      Download signed agreement
+                    <button type="button" className="wwu-button wwu-button-primary" onClick={() => handleDownload(agreement)} disabled={isPdfGeneratorLoading}>
+                      {isPdfGeneratorLoading ? 'Preparing PDF…' : 'Download signed agreement'}
                     </button>
                   </div>
                   {agreement.rejection_reason && <p className="wwu-rejection-reason">REVELA’s response: {agreement.rejection_reason}</p>}
@@ -848,8 +774,8 @@ export default function WorkWithUs({ onClose, initialView = 'apply' }: WorkWithU
             <div className="wwu-panel wwu-existing-application" role="status">
               <h2>Browser copy available — not submitted</h2>
               <p>Your signed copy could not be recorded in REVELA. Downloading it does not submit an application.</p>
-              <button type="button" className="wwu-button wwu-button-primary" onClick={() => handleDownload(localSignedAgreement)}>
-                Download signed agreement
+              <button type="button" className="wwu-button wwu-button-primary" onClick={() => handleDownload(localSignedAgreement)} disabled={isPdfGeneratorLoading}>
+                {isPdfGeneratorLoading ? 'Preparing PDF…' : 'Download signed agreement'}
               </button>
             </div>
           )}
