@@ -3,7 +3,7 @@ import type { User } from '@supabase/supabase-js';
 import {
   activateWorkAgreement,
   DEFAULT_AGREEMENT_VERSION,
-  downloadAgreementPdf,
+  generateAgreementPdf,
   getActiveAgreementVersion,
   getAllWorkAgreements,
   getMyWorkAgreements,
@@ -79,6 +79,28 @@ function replaceAgreement(
   return agreements.map((agreement) => agreement.id === updated.id ? updated : agreement);
 }
 
+function isMobileBrowser(): boolean {
+  return /Android|iPhone|iPad|iPod|Mobile|Tablet|IEMobile|BlackBerry|Opera Mini/i.test(navigator.userAgent)
+    || (/Macintosh/i.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+}
+
+function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        resolve(reader.result);
+      } else {
+        reject(new Error('The agreement PDF could not be prepared for preview.'));
+      }
+    };
+    reader.onerror = () => {
+      reject(reader.error ?? new Error('The agreement PDF could not be prepared for preview.'));
+    };
+    reader.readAsDataURL(blob);
+  });
+}
+
 export default function WorkWithUs({ onClose, initialView = 'apply' }: WorkWithUsProps) {
   const [user, setUser] = useState<User | null>(null);
   const [authMode, setAuthMode] = useState<AuthMode>('sign-in');
@@ -104,6 +126,8 @@ export default function WorkWithUs({ onClose, initialView = 'apply' }: WorkWithU
   const [adminLoading, setAdminLoading] = useState(false);
   const [versionLoading, setVersionLoading] = useState(false);
   const [busyAgreementId, setBusyAgreementId] = useState('');
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [pdfPreview, setPdfPreview] = useState<{ dataUrl: string; fileName: string } | null>(null);
   const [message, setMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [searchText, setSearchText] = useState('');
@@ -114,6 +138,20 @@ export default function WorkWithUs({ onClose, initialView = 'apply' }: WorkWithU
   const [administratorSignature, setAdministratorSignature] = useState('');
   const [rejectionReason, setRejectionReason] = useState('');
   const [commencementDate, setCommencementDate] = useState('');
+
+  useEffect(() => {
+    if (!pdfPreview) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setPdfPreview(null);
+    };
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [pdfPreview]);
 
   const isAdministrator = user?.app_metadata?.revela_agreement_admin === true;
   const email = user?.email ?? '';
@@ -350,11 +388,38 @@ export default function WorkWithUs({ onClose, initialView = 'apply' }: WorkWithU
   const handleDownload = async (agreement: BrowserAgreementDocument) => {
     setErrorMessage('');
     setMessage('');
+    setPdfPreview(null);
+    setIsGeneratingPdf(true);
     try {
       const safeName = agreement.full_name.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '') || 'Applicant';
-      await downloadAgreementPdf(agreement, `REVELA-Marketing-Agreement-${safeName}.pdf`);
+      const fileName = `REVELA-Marketing-Agreement-${safeName}.pdf`;
+      const blob = await generateAgreementPdf(agreement);
+      if (isMobileBrowser()) {
+        setPdfPreview({ dataUrl: await blobToDataUrl(blob), fileName });
+        return;
+      }
+
+      const legacyNavigator = navigator as Navigator & {
+        msSaveOrOpenBlob?: (file: Blob, defaultName?: string) => boolean;
+      };
+      if (legacyNavigator.msSaveOrOpenBlob?.call(navigator, blob, fileName)) return;
+
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = objectUrl;
+      link.download = fileName;
+      link.style.display = 'none';
+      try {
+        document.body.appendChild(link);
+        link.click();
+      } finally {
+        link.remove();
+        window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+      }
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'The agreement PDF could not be generated.');
+    } finally {
+      setIsGeneratingPdf(false);
     }
   };
 
@@ -618,8 +683,8 @@ export default function WorkWithUs({ onClose, initialView = 'apply' }: WorkWithU
                     <span>Submitted <strong>{new Date(agreement.submitted_at).toLocaleString()}</strong></span>
                   </div>
                   <div className="wwu-card-actions">
-                    <button type="button" className="wwu-button wwu-button-secondary" onClick={() => handleDownload(agreement)}>
-                      Download PDF
+                    <button type="button" className="wwu-button wwu-button-secondary" onClick={() => handleDownload(agreement)} disabled={isGeneratingPdf}>
+                      {isGeneratingPdf ? 'Preparing PDF…' : 'Download PDF'}
                     </button>
                     {(agreement.status === 'submitted' || agreement.status === 'pending_review') && (
                       <>
@@ -679,8 +744,8 @@ export default function WorkWithUs({ onClose, initialView = 'apply' }: WorkWithU
             <div className="wwu-panel wwu-existing-application" role="status">
               <h2>Browser copy available — not submitted</h2>
               <p>Your signed copy could not be recorded in REVELA. Downloading it does not submit an application.</p>
-              <button type="button" className="wwu-button wwu-button-primary" onClick={() => handleDownload(localSignedAgreement)}>
-                Download signed PDF
+              <button type="button" className="wwu-button wwu-button-primary" onClick={() => handleDownload(localSignedAgreement)} disabled={isGeneratingPdf}>
+                {isGeneratingPdf ? 'Preparing PDF…' : 'Download signed PDF'}
               </button>
             </div>
           )}
@@ -704,8 +769,8 @@ export default function WorkWithUs({ onClose, initialView = 'apply' }: WorkWithU
                     <span>REVELA approval <strong>{agreement.administrator_signed_at ? `Approved ${new Date(agreement.administrator_signed_at).toLocaleString()}` : 'Pending'}</strong></span>
                   </div>
                   <div className="wwu-card-actions">
-                    <button type="button" className="wwu-button wwu-button-primary" onClick={() => handleDownload(agreement)}>
-                      Download signed agreement
+                    <button type="button" className="wwu-button wwu-button-primary" onClick={() => handleDownload(agreement)} disabled={isGeneratingPdf}>
+                      {isGeneratingPdf ? 'Preparing PDF…' : 'Download signed agreement'}
                     </button>
                   </div>
                   {agreement.rejection_reason && <p className="wwu-rejection-reason">REVELA’s response: {agreement.rejection_reason}</p>}
@@ -730,8 +795,8 @@ export default function WorkWithUs({ onClose, initialView = 'apply' }: WorkWithU
             <div className="wwu-panel wwu-existing-application" role="status">
               <h2>Browser copy available — not submitted</h2>
               <p>Your signed copy could not be recorded in REVELA. Downloading it does not submit an application.</p>
-              <button type="button" className="wwu-button wwu-button-primary" onClick={() => handleDownload(localSignedAgreement)}>
-                Download signed PDF
+              <button type="button" className="wwu-button wwu-button-primary" onClick={() => handleDownload(localSignedAgreement)} disabled={isGeneratingPdf}>
+                {isGeneratingPdf ? 'Preparing PDF…' : 'Download signed PDF'}
               </button>
             </div>
           )}
@@ -819,6 +884,31 @@ export default function WorkWithUs({ onClose, initialView = 'apply' }: WorkWithU
               )}
           </>
         </section>
+      )}
+
+      {pdfPreview && (
+        <div
+          className="wwu-pdf-preview-overlay"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) setPdfPreview(null);
+          }}
+        >
+          <section className="wwu-pdf-preview-dialog" role="dialog" aria-modal="true" aria-labelledby="wwu-pdf-preview-title">
+            <header className="wwu-pdf-preview-header">
+              <div>
+                <h2 id="wwu-pdf-preview-title">Signed agreement PDF</h2>
+                <p>Use your browser’s PDF controls to view, print, or save this agreement.</p>
+              </div>
+              <button type="button" className="wwu-close" onClick={() => setPdfPreview(null)} aria-label="Close PDF preview">×</button>
+            </header>
+            <iframe className="wwu-pdf-preview-frame" src={pdfPreview.dataUrl} title="Signed agreement PDF preview" />
+            <div className="wwu-pdf-preview-actions">
+              <a href={pdfPreview.dataUrl} download={pdfPreview.fileName} target="_blank" rel="noreferrer">
+                Open &amp; Save PDF
+              </a>
+            </div>
+          </section>
+        </div>
       )}
     </main>
   );
