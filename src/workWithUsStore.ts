@@ -437,5 +437,17 @@ export async function downloadAgreementPdf(
   }
 
   const safeName = agreement.full_name.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '') || 'Applicant';
-  pdf.save(fileName ?? `REVELA-Agreement-${safeName}.pdf`);
+  const blob = new Blob([pdf.output('arraybuffer')], { type: 'application/pdf' });
+  const objectUrl = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = objectUrl;
+  link.download = fileName ?? `REVELA-Marketing-Agreement-${safeName}.pdf`;
+  link.style.display = 'none';
+  document.body.appendChild(link);
+  try {
+    link.click();
+  } finally {
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+  }
 }
