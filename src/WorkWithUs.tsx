@@ -353,7 +353,6 @@ export default function WorkWithUs({ onClose, initialView = 'apply' }: WorkWithU
     try {
       const safeName = agreement.full_name.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '') || 'Applicant';
       await downloadAgreementPdf(agreement, `REVELA-Marketing-Agreement-${safeName}.pdf`);
-      setMessage('Your agreement PDF download has started.');
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'The agreement PDF could not be generated.');
     }
