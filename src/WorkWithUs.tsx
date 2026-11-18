@@ -1,10 +1,8 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
-import { flushSync } from 'react-dom';
 import type { User } from '@supabase/supabase-js';
 import {
   activateWorkAgreement,
   DEFAULT_AGREEMENT_VERSION,
-  generateAgreementPdf,
   getActiveAgreementVersion,
   getAllWorkAgreements,
   getMyWorkAgreements,
@@ -73,10 +71,6 @@ function formatDate(value: string | null): string {
   return new Date(value.length === 10 ? `${value}T00:00:00` : value).toLocaleDateString();
 }
 
-function formatTimestamp(value?: string | null): string {
-  return value ? new Date(value).toLocaleString() : 'Not recorded';
-}
-
 function replaceAgreement(
   agreements: WorkWithUsAgreement[],
   updated: WorkWithUsAgreement,
@@ -84,74 +78,104 @@ function replaceAgreement(
   return agreements.map((agreement) => agreement.id === updated.id ? updated : agreement);
 }
 
-function isMobileBrowser(): boolean {
-  return /Android|iPhone|iPad|iPod|Mobile|Tablet|IEMobile|BlackBerry|Opera Mini/i.test(navigator.userAgent)
-    || (/Macintosh/i.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+const htmlEscapeMap: Record<string, string> = {
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+  '"': '&quot;',
+  "'": '&#39;',
+};
+
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, (character) => htmlEscapeMap[character] ?? character);
 }
 
-function AgreementPrintView({
-  agreement,
-  onClose,
-  errorMessage,
-}: {
-  agreement: BrowserAgreementDocument;
-  onClose: () => void;
-  errorMessage: string;
-}) {
-  return (
-    <main className="wwu-print-view">
-      <div className="wwu-print-toolbar">
-        <button type="button" className="wwu-button wwu-button-primary" onClick={() => window.print()}>
-          Print / Save as PDF
-        </button>
-        <button type="button" className="wwu-button wwu-button-secondary" onClick={onClose}>
-          Back to agreements
-        </button>
-      </div>
-      {errorMessage && <p className="wwu-print-error" role="alert">{errorMessage}</p>}
-      <article className="wwu-print-document">
-        <header className="wwu-print-heading">
-          <p>REVELA</p>
-          <h1>Social Media Marketing Engagement Agreement</h1>
-          <span>Agreement version {agreement.agreement_version}</span>
-        </header>
+function formatTimestamp(value?: string | null): string {
+  if (!value) return 'Not recorded';
+  const timestamp = new Date(value);
+  return Number.isNaN(timestamp.getTime()) ? value : timestamp.toLocaleString();
+}
 
-        <section className="wwu-print-section">
-          <h2>Applicant details</h2>
-          <dl>
-            <div><dt>Full legal name</dt><dd>{agreement.full_name}</dd></div>
-            <div><dt>REVELA username</dt><dd>{agreement.username || 'Not provided'}</dd></div>
-            <div><dt>Email address</dt><dd>{agreement.email}</dd></div>
-            <div><dt>Phone number</dt><dd>{agreement.phone}</dd></div>
-            <div><dt>Residential address</dt><dd>{agreement.residential_address || 'Not provided'}</dd></div>
-            <div><dt>Application date</dt><dd>{formatDate(agreement.application_date)}</dd></div>
-            <div><dt>Requested commencement</dt><dd>{formatDate(agreement.requested_commencement_date)}</dd></div>
-            <div><dt>Agreed commencement</dt><dd>{formatDate(agreement.commencement_date)}</dd></div>
-            <div><dt>Submitted</dt><dd>{formatTimestamp(agreement.submitted_at)}</dd></div>
-            <div><dt>Applicant signed</dt><dd>{formatTimestamp(agreement.accepted_at)}</dd></div>
-            <div><dt>REVELA reviewed</dt><dd>{formatTimestamp(agreement.administrator_reviewed_at)}</dd></div>
-            <div><dt>Status</dt><dd>{agreement.status.replace(/_/g, ' ')}</dd></div>
-          </dl>
-        </section>
+function agreementHtml(agreement: BrowserAgreementDocument): string {
+  const details: Array<[string, string]> = [
+    ['Full legal name', agreement.full_name],
+    ['REVELA username', agreement.username || 'Not provided'],
+    ['Email address', agreement.email],
+    ['Phone number', agreement.phone],
+    ['Residential address', agreement.residential_address || 'Not provided'],
+    ['Application date', formatDate(agreement.application_date)],
+    ['Requested commencement', formatDate(agreement.requested_commencement_date)],
+    ['Agreed commencement', formatDate(agreement.commencement_date)],
+    ['Agreement version', agreement.agreement_version],
+    ['Submitted', formatTimestamp(agreement.submitted_at)],
+    ['Applicant signed', formatTimestamp(agreement.accepted_at)],
+    ['REVELA reviewed', formatTimestamp(agreement.administrator_reviewed_at)],
+    ['Status', agreement.status.replace(/_/g, ' ')],
+  ];
+  const detailMarkup = details.map(([label, value]) => (
+    `<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd></div>`
+  )).join('');
 
-        <section className="wwu-print-section">
-          <h2>Accepted agreement terms</h2>
-          <pre>{agreement.agreement_snapshot}</pre>
-        </section>
-
-        <section className="wwu-print-section">
-          <h2>Electronic signatures</h2>
-          <p><strong>Applicant:</strong> {agreement.signature_text}</p>
-          <p><strong>Signed at:</strong> {formatTimestamp(agreement.accepted_at)}</p>
-          <p><strong>REVELA administrator:</strong> {agreement.administrator_name || 'Pending review'}</p>
-          <p><strong>Administrator signature:</strong> {agreement.administrator_signature_text || 'Not signed'}</p>
-          {agreement.administrator_signed_at && (
-            <p><strong>Administrator signed at:</strong> {formatTimestamp(agreement.administrator_signed_at)}</p>
-          )}
-        </section>
-      </article>
-    </main>
-  );
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>${escapeHtml(`REVELA Marketing Agreement - ${agreement.full_name}`)}</title>
+  <style>
+    :root { color-scheme: light; font-family: Arial, Helvetica, sans-serif; color: #19191c; }
+    body { margin: 0; padding: 32px 16px; background: #f0f0f2; }
+    main { box-sizing: border-box; max-width: 860px; margin: auto; padding: 42px; background: white; }
+    header { margin-bottom: 28px; border-bottom: 2px solid #e50914; padding-bottom: 16px; }
+    header p { margin: 0 0 8px; color: #b9000b; font-size: 15px; font-weight: 800; letter-spacing: .12em; }
+    h1 { margin: 0 0 8px; font-size: 24px; }
+    header span { color: #555; font-size: 12px; }
+    section { margin: 24px 0; }
+    h2 { margin: 0 0 12px; border-bottom: 1px solid #ccc; padding-bottom: 6px; font-size: 16px; }
+    dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 24px; margin: 0; }
+    dt { color: #555; font-size: 11px; font-weight: 700; }
+    dd { margin: 3px 0 0; overflow-wrap: anywhere; font-size: 13px; }
+    pre { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font: 11px/1.55 Arial, Helvetica, sans-serif; }
+    section > p { font-size: 13px; }
+    @media (max-width: 600px) {
+      body { padding: 12px; }
+      main { padding: 22px; }
+      h1 { font-size: 20px; }
+      dl { grid-template-columns: 1fr; }
+    }
+    @media print {
+      body { padding: 0; background: white; }
+      main { max-width: none; padding: 0; }
+      @page { margin: 16mm; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <p>REVELA</p>
+      <h1>Social Media Marketing Engagement Agreement</h1>
+      <span>Agreement version ${escapeHtml(agreement.agreement_version)}</span>
+    </header>
+    <section>
+      <h2>Applicant details</h2>
+      <dl>${detailMarkup}</dl>
+    </section>
+    <section>
+      <h2>Accepted agreement terms</h2>
+      <pre>${escapeHtml(agreement.agreement_snapshot)}</pre>
+    </section>
+    <section>
+      <h2>Electronic signatures</h2>
+      <p><strong>Applicant:</strong> ${escapeHtml(agreement.signature_text)}</p>
+      <p><strong>Applicant signed:</strong> ${escapeHtml(formatTimestamp(agreement.accepted_at))}</p>
+      <p><strong>REVELA administrator:</strong> ${escapeHtml(agreement.administrator_name || 'Pending review')}</p>
+      <p><strong>Administrator signature:</strong> ${escapeHtml(agreement.administrator_signature_text || 'Not signed')}</p>
+      <p><strong>Administrator signed:</strong> ${escapeHtml(formatTimestamp(agreement.administrator_signed_at))}</p>
+    </section>
+  </main>
+</body>
+</html>`;
 }
 
 export default function WorkWithUs({ onClose, initialView = 'apply' }: WorkWithUsProps) {
@@ -179,8 +203,6 @@ export default function WorkWithUs({ onClose, initialView = 'apply' }: WorkWithU
   const [adminLoading, setAdminLoading] = useState(false);
   const [versionLoading, setVersionLoading] = useState(false);
   const [busyAgreementId, setBusyAgreementId] = useState('');
-  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
-  const [printAgreement, setPrintAgreement] = useState<BrowserAgreementDocument | null>(null);
   const [message, setMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [searchText, setSearchText] = useState('');
@@ -191,14 +213,6 @@ export default function WorkWithUs({ onClose, initialView = 'apply' }: WorkWithU
   const [administratorSignature, setAdministratorSignature] = useState('');
   const [rejectionReason, setRejectionReason] = useState('');
   const [commencementDate, setCommencementDate] = useState('');
-
-  useEffect(() => {
-    const handleAfterPrint = () => setPrintAgreement(null);
-    window.addEventListener('afterprint', handleAfterPrint);
-    return () => {
-      window.removeEventListener('afterprint', handleAfterPrint);
-    };
-  }, []);
 
   const isAdministrator = user?.app_metadata?.revela_agreement_admin === true;
   const email = user?.email ?? '';
@@ -422,34 +436,22 @@ export default function WorkWithUs({ onClose, initialView = 'apply' }: WorkWithU
       setAgreements((current) => [agreement, ...current]);
       setIsConfirming(false);
       setAgreementView('mine');
-      setMessage('Your signed agreement was submitted successfully. Download a PDF from My Agreements.');
+      setMessage('Your signed agreement was submitted successfully. Download an HTML copy from My Agreements.');
     } catch (error) {
       setLocalSignedAgreement(localDocument);
       setIsConfirming(false);
-      setErrorMessage(`Your agreement could not be submitted or recorded: ${error instanceof Error ? error.message : 'Unknown error'}. You can still download a local PDF copy, but it will not be submitted to REVELA.`);
+      setErrorMessage(`Your agreement could not be submitted or recorded: ${error instanceof Error ? error.message : 'Unknown error'}. You can still download a local HTML copy, but it will not be submitted to REVELA.`);
     } finally {
       setIsSubmittingAgreement(false);
     }
   };
 
-  const handleDownload = async (agreement: BrowserAgreementDocument) => {
+  const handleDownload = (agreement: BrowserAgreementDocument) => {
     setErrorMessage('');
     setMessage('');
-    if (isMobileBrowser()) {
-      flushSync(() => setPrintAgreement(agreement));
-      try {
-        window.print();
-      } catch {
-        setErrorMessage('Printing is unavailable in this browser. Use the Print / Save as PDF button instead.');
-      }
-      return;
-    }
-    setIsGeneratingPdf(true);
     try {
-      const safeName = agreement.full_name.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '') || 'Applicant';
-      const fileName = `REVELA-Marketing-Agreement-${safeName}.pdf`;
-      const blob = await generateAgreementPdf(agreement);
-
+      const blob = new Blob([agreementHtml(agreement)], { type: 'text/html;charset=utf-8' });
+      const fileName = 'REVELA-Marketing-Agreement.html';
       const legacyNavigator = navigator as Navigator & {
         msSaveOrOpenBlob?: (file: Blob, defaultName?: string) => boolean;
       };
@@ -467,12 +469,10 @@ export default function WorkWithUs({ onClose, initialView = 'apply' }: WorkWithU
         link.click();
       } finally {
         link.remove();
-        window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+        window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60000);
       }
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'The agreement PDF could not be generated.');
-    } finally {
-      setIsGeneratingPdf(false);
+      setErrorMessage(error instanceof Error ? error.message : 'The agreement HTML file could not be generated.');
     }
   };
 
@@ -509,7 +509,7 @@ export default function WorkWithUs({ onClose, initialView = 'apply' }: WorkWithU
       });
       setAdminAgreements((current) => replaceAgreement(current, updated));
       if (decision === 'accepted') {
-        setMessage(`Agreement for ${updated.full_name} accepted and signed. Download the final PDF from the application.`);
+        setMessage(`Agreement for ${updated.full_name} accepted and signed. Download the final agreement HTML file from the application.`);
       } else {
         setMessage(`Agreement for ${updated.full_name} updated: ${statusLabel(updated.status)}.`);
       }
@@ -581,16 +581,6 @@ export default function WorkWithUs({ onClose, initialView = 'apply' }: WorkWithU
 
   const today = new Date().toISOString().slice(0, 10);
   const displayedVersion = version ?? DEFAULT_AGREEMENT_VERSION;
-
-  if (printAgreement) {
-    return (
-      <AgreementPrintView
-        agreement={printAgreement}
-        onClose={() => setPrintAgreement(null)}
-        errorMessage={errorMessage}
-      />
-    );
-  }
 
   return (
     <main className="wwu-shell">
@@ -746,8 +736,8 @@ export default function WorkWithUs({ onClose, initialView = 'apply' }: WorkWithU
                     <span>Submitted <strong>{new Date(agreement.submitted_at).toLocaleString()}</strong></span>
                   </div>
                   <div className="wwu-card-actions">
-                    <button type="button" className="wwu-button wwu-button-secondary" onClick={() => handleDownload(agreement)} disabled={isGeneratingPdf}>
-                      {isGeneratingPdf ? 'Preparing PDF…' : 'Download PDF'}
+                    <button type="button" className="wwu-button wwu-button-secondary" onClick={() => handleDownload(agreement)}>
+                      Download HTML agreement
                     </button>
                     {(agreement.status === 'submitted' || agreement.status === 'pending_review') && (
                       <>
@@ -807,8 +797,8 @@ export default function WorkWithUs({ onClose, initialView = 'apply' }: WorkWithU
             <div className="wwu-panel wwu-existing-application" role="status">
               <h2>Browser copy available — not submitted</h2>
               <p>Your signed copy could not be recorded in REVELA. Downloading it does not submit an application.</p>
-              <button type="button" className="wwu-button wwu-button-primary" onClick={() => handleDownload(localSignedAgreement)} disabled={isGeneratingPdf}>
-                {isGeneratingPdf ? 'Preparing PDF…' : 'Download signed PDF'}
+              <button type="button" className="wwu-button wwu-button-primary" onClick={() => handleDownload(localSignedAgreement)}>
+                Download signed agreement
               </button>
             </div>
           )}
@@ -832,8 +822,8 @@ export default function WorkWithUs({ onClose, initialView = 'apply' }: WorkWithU
                     <span>REVELA approval <strong>{agreement.administrator_signed_at ? `Approved ${new Date(agreement.administrator_signed_at).toLocaleString()}` : 'Pending'}</strong></span>
                   </div>
                   <div className="wwu-card-actions">
-                    <button type="button" className="wwu-button wwu-button-primary" onClick={() => handleDownload(agreement)} disabled={isGeneratingPdf}>
-                      {isGeneratingPdf ? 'Preparing PDF…' : 'Download signed agreement'}
+                    <button type="button" className="wwu-button wwu-button-primary" onClick={() => handleDownload(agreement)}>
+                      Download signed agreement
                     </button>
                   </div>
                   {agreement.rejection_reason && <p className="wwu-rejection-reason">REVELA’s response: {agreement.rejection_reason}</p>}
@@ -858,8 +848,8 @@ export default function WorkWithUs({ onClose, initialView = 'apply' }: WorkWithU
             <div className="wwu-panel wwu-existing-application" role="status">
               <h2>Browser copy available — not submitted</h2>
               <p>Your signed copy could not be recorded in REVELA. Downloading it does not submit an application.</p>
-              <button type="button" className="wwu-button wwu-button-primary" onClick={() => handleDownload(localSignedAgreement)} disabled={isGeneratingPdf}>
-                {isGeneratingPdf ? 'Preparing PDF…' : 'Download signed PDF'}
+              <button type="button" className="wwu-button wwu-button-primary" onClick={() => handleDownload(localSignedAgreement)}>
+                Download signed agreement
               </button>
             </div>
           )}
@@ -875,7 +865,7 @@ export default function WorkWithUs({ onClose, initialView = 'apply' }: WorkWithU
               {existingOpenApplication ? (
                 <div className="wwu-panel wwu-existing-application">
                   <h2>You already have an open application</h2>
-                  <p>Your agreement is currently <strong>{statusLabel(existingOpenApplication.status)}</strong>. You can review its status and PDF in My Agreements.</p>
+                  <p>Your agreement is currently <strong>{statusLabel(existingOpenApplication.status)}</strong>. You can review its status and download the agreement file in My Agreements.</p>
                   <button type="button" className="wwu-button wwu-button-primary" onClick={() => setAgreementView('mine')}>View My Agreements</button>
                 </div>
               ) : !isConfirming ? (
