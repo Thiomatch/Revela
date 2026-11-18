@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { flushSync } from 'react-dom';
 import type { User } from '@supabase/supabase-js';
 import {
   activateWorkAgreement,
@@ -72,6 +73,10 @@ function formatDate(value: string | null): string {
   return new Date(value.length === 10 ? `${value}T00:00:00` : value).toLocaleDateString();
 }
 
+function formatTimestamp(value?: string | null): string {
+  return value ? new Date(value).toLocaleString() : 'Not recorded';
+}
+
 function replaceAgreement(
   agreements: WorkWithUsAgreement[],
   updated: WorkWithUsAgreement,
@@ -82,6 +87,71 @@ function replaceAgreement(
 function isMobileBrowser(): boolean {
   return /Android|iPhone|iPad|iPod|Mobile|Tablet|IEMobile|BlackBerry|Opera Mini/i.test(navigator.userAgent)
     || (/Macintosh/i.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+}
+
+function AgreementPrintView({
+  agreement,
+  onClose,
+  errorMessage,
+}: {
+  agreement: BrowserAgreementDocument;
+  onClose: () => void;
+  errorMessage: string;
+}) {
+  return (
+    <main className="wwu-print-view">
+      <div className="wwu-print-toolbar">
+        <button type="button" className="wwu-button wwu-button-primary" onClick={() => window.print()}>
+          Print / Save as PDF
+        </button>
+        <button type="button" className="wwu-button wwu-button-secondary" onClick={onClose}>
+          Back to agreements
+        </button>
+      </div>
+      {errorMessage && <p className="wwu-print-error" role="alert">{errorMessage}</p>}
+      <article className="wwu-print-document">
+        <header className="wwu-print-heading">
+          <p>REVELA</p>
+          <h1>Social Media Marketing Engagement Agreement</h1>
+          <span>Agreement version {agreement.agreement_version}</span>
+        </header>
+
+        <section className="wwu-print-section">
+          <h2>Applicant details</h2>
+          <dl>
+            <div><dt>Full legal name</dt><dd>{agreement.full_name}</dd></div>
+            <div><dt>REVELA username</dt><dd>{agreement.username || 'Not provided'}</dd></div>
+            <div><dt>Email address</dt><dd>{agreement.email}</dd></div>
+            <div><dt>Phone number</dt><dd>{agreement.phone}</dd></div>
+            <div><dt>Residential address</dt><dd>{agreement.residential_address || 'Not provided'}</dd></div>
+            <div><dt>Application date</dt><dd>{formatDate(agreement.application_date)}</dd></div>
+            <div><dt>Requested commencement</dt><dd>{formatDate(agreement.requested_commencement_date)}</dd></div>
+            <div><dt>Agreed commencement</dt><dd>{formatDate(agreement.commencement_date)}</dd></div>
+            <div><dt>Submitted</dt><dd>{formatTimestamp(agreement.submitted_at)}</dd></div>
+            <div><dt>Applicant signed</dt><dd>{formatTimestamp(agreement.accepted_at)}</dd></div>
+            <div><dt>REVELA reviewed</dt><dd>{formatTimestamp(agreement.administrator_reviewed_at)}</dd></div>
+            <div><dt>Status</dt><dd>{agreement.status.replace(/_/g, ' ')}</dd></div>
+          </dl>
+        </section>
+
+        <section className="wwu-print-section">
+          <h2>Accepted agreement terms</h2>
+          <pre>{agreement.agreement_snapshot}</pre>
+        </section>
+
+        <section className="wwu-print-section">
+          <h2>Electronic signatures</h2>
+          <p><strong>Applicant:</strong> {agreement.signature_text}</p>
+          <p><strong>Signed at:</strong> {formatTimestamp(agreement.accepted_at)}</p>
+          <p><strong>REVELA administrator:</strong> {agreement.administrator_name || 'Pending review'}</p>
+          <p><strong>Administrator signature:</strong> {agreement.administrator_signature_text || 'Not signed'}</p>
+          {agreement.administrator_signed_at && (
+            <p><strong>Administrator signed at:</strong> {formatTimestamp(agreement.administrator_signed_at)}</p>
+          )}
+        </section>
+      </article>
+    </main>
+  );
 }
 
 export default function WorkWithUs({ onClose, initialView = 'apply' }: WorkWithUsProps) {
@@ -110,6 +180,7 @@ export default function WorkWithUs({ onClose, initialView = 'apply' }: WorkWithU
   const [versionLoading, setVersionLoading] = useState(false);
   const [busyAgreementId, setBusyAgreementId] = useState('');
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [printAgreement, setPrintAgreement] = useState<BrowserAgreementDocument | null>(null);
   const [message, setMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [searchText, setSearchText] = useState('');
@@ -120,6 +191,14 @@ export default function WorkWithUs({ onClose, initialView = 'apply' }: WorkWithU
   const [administratorSignature, setAdministratorSignature] = useState('');
   const [rejectionReason, setRejectionReason] = useState('');
   const [commencementDate, setCommencementDate] = useState('');
+
+  useEffect(() => {
+    const handleAfterPrint = () => setPrintAgreement(null);
+    window.addEventListener('afterprint', handleAfterPrint);
+    return () => {
+      window.removeEventListener('afterprint', handleAfterPrint);
+    };
+  }, []);
 
   const isAdministrator = user?.app_metadata?.revela_agreement_admin === true;
   const email = user?.email ?? '';
@@ -356,19 +435,14 @@ export default function WorkWithUs({ onClose, initialView = 'apply' }: WorkWithU
   const handleDownload = async (agreement: BrowserAgreementDocument) => {
     setErrorMessage('');
     setMessage('');
-    const mobile = isMobileBrowser();
-    let mobileWindow: Window | null = null;
-    if (mobile) {
+    if (isMobileBrowser()) {
+      flushSync(() => setPrintAgreement(agreement));
       try {
-        mobileWindow = window.open('', '_blank');
-        if (mobileWindow) {
-          mobileWindow.document.title = 'Preparing signed agreement';
-          mobileWindow.document.body.textContent = 'Preparing your signed agreement PDF…';
-        }
+        window.print();
       } catch {
-        mobileWindow?.close();
-        mobileWindow = null;
+        setErrorMessage('Printing is unavailable in this browser. Use the Print / Save as PDF button instead.');
       }
+      return;
     }
     setIsGeneratingPdf(true);
     try {
@@ -380,37 +454,10 @@ export default function WorkWithUs({ onClose, initialView = 'apply' }: WorkWithU
         msSaveOrOpenBlob?: (file: Blob, defaultName?: string) => boolean;
       };
       if (legacyNavigator.msSaveOrOpenBlob?.call(navigator, blob, fileName)) {
-        mobileWindow?.close();
         return;
       }
 
       const objectUrl = URL.createObjectURL(blob);
-      if (mobile) {
-        let openedInNewTab = false;
-        try {
-          if (mobileWindow && !mobileWindow.closed) {
-            mobileWindow.opener = null;
-            mobileWindow.location.replace(objectUrl);
-            openedInNewTab = true;
-          } else {
-            const openedWindow = window.open(objectUrl, '_blank');
-            if (openedWindow) {
-              openedWindow.opener = null;
-              openedInNewTab = true;
-            }
-          }
-        } catch {
-          openedInNewTab = false;
-        }
-
-        if (!openedInNewTab) {
-          mobileWindow?.close();
-          window.location.href = objectUrl;
-        }
-        window.setTimeout(() => URL.revokeObjectURL(objectUrl), 600000);
-        return;
-      }
-
       const link = document.createElement('a');
       link.href = objectUrl;
       link.download = fileName;
@@ -423,7 +470,6 @@ export default function WorkWithUs({ onClose, initialView = 'apply' }: WorkWithU
         window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
       }
     } catch (error) {
-      mobileWindow?.close();
       setErrorMessage(error instanceof Error ? error.message : 'The agreement PDF could not be generated.');
     } finally {
       setIsGeneratingPdf(false);
@@ -535,6 +581,16 @@ export default function WorkWithUs({ onClose, initialView = 'apply' }: WorkWithU
 
   const today = new Date().toISOString().slice(0, 10);
   const displayedVersion = version ?? DEFAULT_AGREEMENT_VERSION;
+
+  if (printAgreement) {
+    return (
+      <AgreementPrintView
+        agreement={printAgreement}
+        onClose={() => setPrintAgreement(null)}
+        errorMessage={errorMessage}
+      />
+    );
+  }
 
   return (
     <main className="wwu-shell">
