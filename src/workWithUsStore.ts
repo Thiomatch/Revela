@@ -179,9 +179,20 @@ export type BrowserAgreementDocument = {
 };
 
 const agreementTable = 'revela_work_with_us_agreements';
+const agreementBucket = 'revela-agreements';
 
 function throwSupabaseError(error: { message: string } | null): void {
   if (error) throw new Error(error.message);
+}
+
+export class AgreementPdfStorageError extends Error {
+  constructor(
+    readonly agreement: WorkWithUsAgreement,
+    message: string,
+  ) {
+    super(message);
+    this.name = 'AgreementPdfStorageError';
+  }
 }
 
 export async function getActiveAgreementVersion(): Promise<AgreementVersion> {
@@ -239,7 +250,15 @@ export async function submitWorkAgreement(details: {
   });
   throwSupabaseError(error);
   if (!data) throw new Error('The agreement submission did not return a record.');
-  return data as WorkWithUsAgreement;
+  const agreement = data as WorkWithUsAgreement;
+  try {
+    return await ensureAgreementPdf(agreement);
+  } catch (pdfError) {
+    throw new AgreementPdfStorageError(
+      agreement,
+      pdfError instanceof Error ? pdfError.message : 'Unknown PDF storage error',
+    );
+  }
 }
 
 export async function reviewWorkAgreement(input: {
@@ -445,4 +464,51 @@ export function loadAgreementPdfGenerator(): Promise<AgreementPdfGenerator> {
     });
   }
   return agreementPdfGenerator;
+}
+
+export async function ensureAgreementPdf(
+  agreement: WorkWithUsAgreement,
+  isFinal = false,
+): Promise<WorkWithUsAgreement> {
+  const existingPath = isFinal ? agreement.final_pdf_storage_path : agreement.pdf_storage_path;
+  if (existingPath) return agreement;
+  if (isFinal && !agreement.administrator_signed_at) {
+    throw new Error('The final agreement PDF is not available until REVELA signs the agreement.');
+  }
+
+  const generator = await loadAgreementPdfGenerator();
+  const pdfBlob = generator(agreement);
+  const suffix = isFinal ? '-final' : '';
+  const storagePath = `${agreement.applicant_user_id}/agreements/${agreement.id}${suffix}.pdf`;
+  const { error: uploadError } = await supabase.storage
+    .from(agreementBucket)
+    .upload(storagePath, pdfBlob, {
+      contentType: 'application/pdf',
+      upsert: true,
+    });
+  throwSupabaseError(uploadError);
+
+  const { data, error } = await supabase.rpc('set_revela_work_with_us_pdf_path', {
+    p_agreement_id: agreement.id,
+    p_storage_path: storagePath,
+    p_is_final: isFinal,
+  });
+  throwSupabaseError(error);
+  if (!data) throw new Error('The uploaded PDF path could not be attached to the agreement.');
+  return data as WorkWithUsAgreement;
+}
+
+export async function createAgreementPdfDownloadUrl(agreement: WorkWithUsAgreement): Promise<string> {
+  const storagePath = agreement.final_pdf_storage_path || agreement.pdf_storage_path;
+  if (!storagePath) throw new Error('The signed agreement PDF has not been uploaded yet.');
+  const { data, error } = await supabase.storage
+    .from(agreementBucket)
+    .createSignedUrl(storagePath, 3600, { download: 'REVELA-Marketing-Agreement.pdf' });
+  throwSupabaseError(error);
+  if (!data?.signedUrl) throw new Error('Supabase did not return a signed download URL.');
+  const signedUrl = new URL(data.signedUrl);
+  if (signedUrl.protocol !== 'https:' && !['localhost', '127.0.0.1', '[::1]'].includes(signedUrl.hostname)) {
+    throw new Error('Supabase must provide an HTTPS URL for agreement downloads.');
+  }
+  return signedUrl.toString();
 }
