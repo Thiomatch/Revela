@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import OneSignal from '@onesignal/capacitor-plugin';
+import { Capacitor } from '@capacitor/core';
 import { supabase } from './supabaseClient';
 import { RegistrationModal } from './RegistrationModal';
 import VideoSocialFeatures from './VideoSocialFeatures';
 import AdministrativePortal, { type AdminPortalView } from './AdministrativePortal';
 import WorkWithUs from './WorkWithUs';
 import { getApprovedVideos, type AdminUser, type AdminVideo } from './adminStore';
+import { initializeAdMob, registerBannerAdListeners, showBottomBanner } from './admob';
 
 export const App = () => {
   const [episodes, setEpisodes] = useState<any[]>([]);
@@ -34,11 +36,15 @@ export const App = () => {
   const [adminPortalView, setAdminPortalView] = useState<AdminPortalView>('rules');
   const [showWorkWithUs, setShowWorkWithUs] = useState(false);
   const [workWithUsInitialView, setWorkWithUsInitialView] = useState<'apply' | 'admin'>('apply');
+  const [adMobStatus, setAdMobStatus] = useState('AdMob: waiting');
 
   // Get the movie poster public URL dynamically from Supabase storage bucket 'videos'
   const posterUrl = supabase.storage.from('Videos').getPublicUrl('image.Shadows.S1.png').data.publicUrl;
 
   useEffect(() => {
+    let isCancelled = false;
+    let removeBannerListeners: (() => void) | undefined;
+
     // Initialize OneSignal Push Notifications
     const initOneSignal = async () => {
       try {
@@ -49,7 +55,57 @@ export const App = () => {
       }
     };
 
+    // Initialize Google AdMob & Bottom Banner on Native Devices
+    const initAds = async () => {
+      if (!Capacitor.isNativePlatform()) {
+        setAdMobStatus('AdMob: skipped (not a native app)');
+        return;
+      }
+
+      setAdMobStatus('AdMob: initializing');
+      try {
+        const cleanupListeners = await registerBannerAdListeners(
+          () => {
+            console.info('AdMob banner loaded');
+            if (!isCancelled) setAdMobStatus('AdMob: Loaded event fired');
+          },
+          (error) => {
+            console.error('AdMob banner failed to load:', error);
+            if (!isCancelled) {
+              setAdMobStatus(`AdMob: FailedToLoad (code ${error.code}: ${error.message})`);
+            }
+          },
+        );
+        if (isCancelled) {
+          cleanupListeners();
+          return;
+        }
+        removeBannerListeners = cleanupListeners;
+
+        await initializeAdMob();
+        if (isCancelled) return;
+        await showBottomBanner();
+        if (!isCancelled) {
+          setAdMobStatus((current) => (
+            current === 'AdMob: Loaded event fired' || current.startsWith('AdMob: FailedToLoad')
+              ? current
+              : 'AdMob: showBanner() resolved; awaiting Loaded/FailedToLoad'
+          ));
+        }
+      } catch (error) {
+        console.error("AdMob initialization error:", error);
+        if (!isCancelled) {
+          setAdMobStatus((current) => (
+            current.startsWith('AdMob: FailedToLoad')
+              ? current
+              : `AdMob: failed (${error instanceof Error ? error.message : String(error)})`
+          ));
+        }
+      }
+    };
+
     initOneSignal();
+    void initAds();
     fetchEpisodes();
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSignedInEmail(session?.user.email ?? null);
@@ -71,7 +127,11 @@ export const App = () => {
         console.error(e);
       }
     }
-    return () => subscription.unsubscribe();
+    return () => {
+      isCancelled = true;
+      removeBannerListeners?.();
+      subscription.unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
@@ -238,7 +298,26 @@ export const App = () => {
 
   return (
     <div style={{ backgroundColor: '#000', color: '#fff', height: '100vh', width: '100vw', margin: 0, padding: 0, overflowX: 'hidden', overflowY: 'auto', position: 'relative', fontFamily: 'sans-serif' }}>
-      
+      <div
+        role="status"
+        aria-live="polite"
+        style={{
+          position: 'fixed',
+          top: '16px',
+          left: '16px',
+          zIndex: 31,
+          maxWidth: 'calc(100vw - 140px)',
+          padding: '6px 9px',
+          borderRadius: '6px',
+          background: 'rgba(0, 0, 0, 0.8)',
+          color: '#fff',
+          fontSize: '11px',
+          overflowWrap: 'anywhere'
+        }}
+      >
+        {adMobStatus}
+      </div>
+
       {/* Top Right Auth / Profile "ME" Badge Control */}
     <div style={{ position: 'fixed', top: '16px', right: '16px', zIndex: 30, display: 'flex', alignItems: 'center', gap: '10px' }}>
         {(adminUser || signedInEmail) && (
@@ -396,7 +475,7 @@ export const App = () => {
         {/* Bottom-Left Movie Title & Synopsis Overlay */}
         <div style={{
           position: 'absolute',
-          bottom: '24px',
+          bottom: '84px',
           left: '16px',
           right: '80px',
           zIndex: 15,
