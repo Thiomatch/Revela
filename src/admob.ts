@@ -8,6 +8,18 @@ import {
 import type { AdMobError } from '@capacitor-community/admob';
 import { Capacitor } from '@capacitor/core';
 
+const USE_TEST_ADS = true;
+const TEST_BANNER_AD_UNIT_ID = 'ca-app-pub-3940256099942544/6300978111';
+const PRODUCTION_BANNER_AD_UNIT_ID = '';
+
+function getBannerAdUnitId() {
+  if (USE_TEST_ADS) return TEST_BANNER_AD_UNIT_ID;
+  if (!PRODUCTION_BANNER_AD_UNIT_ID) {
+    throw new Error('Set PRODUCTION_BANNER_AD_UNIT_ID before disabling test ads.');
+  }
+  return PRODUCTION_BANNER_AD_UNIT_ID;
+}
+
 export async function registerBannerAdListeners(
   onLoaded: () => void,
   onFailedToLoad: (error: AdMobError) => void,
@@ -31,7 +43,7 @@ export async function initializeAdMob() {
   if (!Capacitor.isNativePlatform()) return;
 
   await AdMob.initialize({
-    initializeForTesting: true,
+    initializeForTesting: USE_TEST_ADS,
   });
 }
 
@@ -39,11 +51,11 @@ export async function showBottomBanner() {
   if (!Capacitor.isNativePlatform()) return;
 
   const options: BannerAdOptions = {
-    adId: 'ca-app-pub-3940256099942544/6300978111',
+    adId: getBannerAdUnitId(),
     adSize: BannerAdSize.BANNER,
     position: BannerAdPosition.BOTTOM_CENTER,
     margin: 16,
-    isTesting: true,
+    isTesting: USE_TEST_ADS,
   };
 
   await AdMob.showBanner(options);
