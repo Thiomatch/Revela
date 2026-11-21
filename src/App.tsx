@@ -455,7 +455,8 @@ export const App = () => {
 
         {/* Floating Social Features & Episode Button on Middle Right */}
         <VideoSocialFeatures 
-          videoId={selectedCreatorVideo?.id ?? String(currentEpisode)}
+          key={selectedCreatorVideo ? `creator:${selectedCreatorVideo.id}` : `episode:${displayEpisode?.id ?? currentEpisode}`}
+          videoId={selectedCreatorVideo ? `creator:${selectedCreatorVideo.id}` : `episode:${displayEpisode?.id ?? currentEpisode}`}
           onOpenEpisodes={() => setShowEpisodeModal(true)}
           onRequireRegistration={handleRequireRegistration}
         />
