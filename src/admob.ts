@@ -8,9 +8,9 @@ import {
 import type { AdMobError } from '@capacitor-community/admob';
 import { Capacitor } from '@capacitor/core';
 
-const USE_TEST_ADS = true;
+const USE_TEST_ADS = false;
 const TEST_BANNER_AD_UNIT_ID = 'ca-app-pub-3940256099942544/6300978111';
-const PRODUCTION_BANNER_AD_UNIT_ID = '';
+const PRODUCTION_BANNER_AD_UNIT_ID = 'ca-app-pub-5140326213036873/3661170029';
 
 function getBannerAdUnitId() {
   if (USE_TEST_ADS) return TEST_BANNER_AD_UNIT_ID;
