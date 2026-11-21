@@ -77,10 +77,10 @@ Performance bonuses do not constitute ownership or equity in REVELA.
 6. OWNERSHIP OF SOCIAL MEDIA ACCOUNTS
 
 - All official REVELA social media accounts and pages shall remain the property of REVELA.
-- The Marketing Representative shall receive the necessary administrative access to perform her duties.
-- She shall not transfer ownership, change account ownership or restrict REVELA's access.
+- The Marketing Representative shall receive the necessary administrative access to perform their duties.
+- The Marketing Representative shall not transfer ownership, change account ownership or restrict REVELA's access.
 - All passwords, account information and administrative privileges shall remain under the control of REVELA.
-- Upon termination of this engagement, her administrative access shall be withdrawn.
+- Upon termination of this engagement, the Marketing Representative's administrative access shall be withdrawn.
 
 7. OWNERSHIP OF CONTENT
 
@@ -114,7 +114,7 @@ This agreement serves as an initial engagement agreement for REVELA during its e
 
 The parties acknowledge that the agreement may be reviewed, updated or replaced by a more comprehensive agreement in the future.
 
-Any revision shall be communicated to the Marketing Representative and shall require her acceptance where applicable.
+Any revision shall be communicated to the Marketing Representative and shall require the Marketing Representative's acceptance where applicable.
 
 12. ACCEPTANCE AND SIGNATURES
 
