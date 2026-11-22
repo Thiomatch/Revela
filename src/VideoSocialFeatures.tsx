@@ -1,19 +1,22 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
+import { createPortal } from 'react-dom';
 import { getVideoLikeCount, incrementVideoLike, subscribeToVideoLikeCount } from './videoLikes';
+import {
+  addVideoComment,
+  getVideoComments,
+  subscribeToVideoComments,
+  type VideoComment,
+} from './videoComments';
 import './SocialFeatures.css';
 
 type VideoSocialFeaturesProps = {
   videoId: string;
   onOpenEpisodes: () => void;
-  onOpenComments: () => void;
-  onRequireRegistration: () => void;
 };
 
 export default function VideoSocialFeatures({
   videoId,
   onOpenEpisodes,
-  onOpenComments,
-  onRequireRegistration: _onRequireRegistration,
 }: VideoSocialFeaturesProps) {
   const [likesCount, setLikesCount] = useState<number>(0);
   const [pendingLikes, setPendingLikes] = useState(0);
@@ -21,10 +24,38 @@ export default function VideoSocialFeatures({
   const [likeError, setLikeError] = useState('');
   const [showPlusOne, setShowPlusOne] = useState<boolean>(false);
   const [shareCount] = useState<number>(42);
+  const [comments, setComments] = useState<VideoComment[]>([]);
+  const [commentsLoading, setCommentsLoading] = useState(false);
+  const [commentDraft, setCommentDraft] = useState('');
+  const [commentSubmitting, setCommentSubmitting] = useState(false);
+  const [commentError, setCommentError] = useState('');
+  const [showComments, setShowComments] = useState(false);
   const serverCountRef = useRef(0);
   const pendingLikesRef = useRef(0);
   const activeVideoIdRef = useRef(videoId);
   const likeQueueRef = useRef(Promise.resolve());
+  const activeCommentsVideoIdRef = useRef(videoId);
+  const commentsRequestIdRef = useRef(0);
+
+  const loadComments = useCallback(async (requestedVideoId: string) => {
+    const requestId = ++commentsRequestIdRef.current;
+    setCommentsLoading(true);
+    setCommentError('');
+    try {
+      const loadedComments = await getVideoComments(requestedVideoId);
+      if (activeCommentsVideoIdRef.current === requestedVideoId && commentsRequestIdRef.current === requestId) {
+        setComments((current) => mergeComments(current, loadedComments));
+      }
+    } catch (error) {
+      if (activeCommentsVideoIdRef.current === requestedVideoId && commentsRequestIdRef.current === requestId) {
+        setCommentError(error instanceof Error ? error.message : 'Comments could not be loaded.');
+      }
+    } finally {
+      if (activeCommentsVideoIdRef.current === requestedVideoId && commentsRequestIdRef.current === requestId) {
+        setCommentsLoading(false);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     activeVideoIdRef.current = videoId;
@@ -57,6 +88,25 @@ export default function VideoSocialFeatures({
       if (activeVideoIdRef.current === videoId) activeVideoIdRef.current = '';
     };
   }, [videoId]);
+
+  useEffect(() => {
+    activeCommentsVideoIdRef.current = videoId;
+    setComments([]);
+    setCommentDraft('');
+    setCommentError('');
+    const unsubscribe = subscribeToVideoComments(videoId, (comment) => {
+      if (activeCommentsVideoIdRef.current === videoId) {
+        setComments((current) => mergeComments(current, [comment]));
+      }
+    });
+    void loadComments(videoId);
+
+    return () => {
+      unsubscribe();
+      activeCommentsVideoIdRef.current = '';
+      commentsRequestIdRef.current += 1;
+    };
+  }, [loadComments, videoId]);
 
   const handleLikeClick = () => {
     const requestedVideoId = videoId;
@@ -123,7 +173,31 @@ export default function VideoSocialFeatures({
     }
   };
 
+  const handleCommentSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const text = commentDraft.trim();
+    if (!text || commentSubmitting) return;
+
+    const requestedVideoId = videoId;
+    setCommentSubmitting(true);
+    setCommentError('');
+    try {
+      const comment = await addVideoComment(requestedVideoId, text);
+      if (activeCommentsVideoIdRef.current === requestedVideoId) {
+        setComments((current) => mergeComments(current, [comment]));
+        setCommentDraft('');
+      }
+    } catch (error) {
+      setCommentError(error instanceof Error ? error.message : 'Your comment could not be posted.');
+    } finally {
+      if (activeCommentsVideoIdRef.current === requestedVideoId) {
+        setCommentSubmitting(false);
+      }
+    }
+  };
+
   return (
+    <>
     <div style={{
       position: 'absolute',
       right: '16px',
@@ -224,7 +298,8 @@ export default function VideoSocialFeatures({
           type="button"
           onClick={(event) => {
             event.stopPropagation();
-            onOpenComments();
+            setShowComments(true);
+            void loadComments(videoId);
           }}
           style={{
             width: '44px',
@@ -245,7 +320,7 @@ export default function VideoSocialFeatures({
           💬
         </button>
         <span style={{ fontSize: '11px', color: '#fff', marginTop: '4px', fontWeight: '600', textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}>
-          Comments
+          {comments.length}
         </span>
       </div>
 
@@ -277,5 +352,85 @@ export default function VideoSocialFeatures({
         </span>
       </div>
     </div>
+      {showComments && createPortal(
+        <div
+          className="video-comments-modal-backdrop"
+          onClick={() => setShowComments(false)}
+        >
+          <section
+            className="video-social-panel video-comments-overlay"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="video-comments-heading"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="video-comments">
+              <div className="video-comments-heading">
+                <h3 id="video-comments-heading">Comments <span>{comments.length}</span></h3>
+                <button
+                  type="button"
+                  onClick={() => setShowComments(false)}
+                  aria-label="Close comments"
+                  className="video-comments-close"
+                >
+                  ×
+                </button>
+              </div>
+              <div className="video-comment-list" aria-live="polite">
+                {commentsLoading && comments.length === 0 ? (
+                  <p className="comments-empty">Loading comments…</p>
+                ) : commentError && comments.length === 0 ? (
+                  <p className="video-comment-error" role="alert">{commentError}</p>
+                ) : comments.length === 0 ? (
+                  <p className="comments-empty">No comments yet. Be the first to comment!</p>
+                ) : comments.map((comment) => (
+                  <article className="video-comment" key={comment.id}>
+                    <div className="comment-avatar" aria-hidden="true">
+                      {comment.author_name.slice(0, 1).toUpperCase()}
+                    </div>
+                    <div className="comment-content">
+                      <div className="comment-meta">
+                        <strong>{comment.author_name}</strong>
+                        <time dateTime={comment.created_at}>
+                          {new Date(comment.created_at).toLocaleString()}
+                        </time>
+                      </div>
+                      <p>{comment.comment_text}</p>
+                    </div>
+                  </article>
+                ))}
+                {commentError && <p className="video-comment-error" role="alert">{commentError}</p>}
+              </div>
+              <form className="video-comment-form" onSubmit={(event) => void handleCommentSubmit(event)}>
+                <input
+                  type="text"
+                  value={commentDraft}
+                  onChange={(event) => setCommentDraft(event.target.value)}
+                  placeholder="Add a comment..."
+                  aria-label="Add a comment"
+                  maxLength={2000}
+                  disabled={commentSubmitting}
+                />
+                <div className="comment-form-footer">
+                  <span>{commentSubmitting ? 'Posting…' : `${commentDraft.length}/2000`}</span>
+                  <button type="submit" disabled={commentSubmitting || !commentDraft.trim()}>
+                    {commentSubmitting ? 'Posting…' : 'Post'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </section>
+        </div>,
+        document.body,
+      )}
+    </>
   );
+}
+
+function mergeComments(current: VideoComment[], incoming: VideoComment[]): VideoComment[] {
+  const commentsById = new Map(current.map((comment) => [comment.id, comment]));
+  for (const comment of incoming) commentsById.set(comment.id, comment);
+  return [...commentsById.values()].sort((first, second) => (
+    first.created_at.localeCompare(second.created_at)
+  ));
 }

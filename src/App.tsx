@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from 'react';
 import OneSignal from '@onesignal/capacitor-plugin';
 import { Capacitor } from '@capacitor/core';
 import { supabase } from './supabaseClient';
-import { RegistrationModal } from './RegistrationModal';
 import VideoSocialFeatures from './VideoSocialFeatures';
 import AdministrativePortal, { type AdminPortalView } from './AdministrativePortal';
 import WorkWithUs from './WorkWithUs';
@@ -13,7 +12,6 @@ export const App = () => {
   const [episodes, setEpisodes] = useState<any[]>([]);
   const [currentEpisode, setCurrentEpisode] = useState<number>(1);
   const [showEpisodeModal, setShowEpisodeModal] = useState(false);
-  const [showCommentsModal, setShowCommentsModal] = useState(false);
   const [activeTab, setActiveTab] = useState<'synopsis' | 'episodes'>('episodes');
   const [creatorVideos, setCreatorVideos] = useState<AdminVideo[]>([]);
   const [creatorVideosError, setCreatorVideosError] = useState('');
@@ -26,9 +24,6 @@ export const App = () => {
   // Transition States for Bottom Slide on Video End
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [nextEpisodeData, setNextEpisodeData] = useState<any>(null);
-
-  // Registration Gate States
-  const [showRegModal, setShowRegModal] = useState(false);
 
   // Administrative Portal & Auth States
   const [adminUser, setAdminUser] = useState<AdminUser | null>(null);
@@ -209,14 +204,6 @@ export const App = () => {
     }
   };
 
-  const handleRequireRegistration = () => {
-    setShowRegModal(true);
-  };
-
-  const handleRegistrationSuccess = () => {
-    setShowRegModal(false);
-  };
-
   const handleAdminCreated = (user: AdminUser) => {
     setAdminUser(user);
     localStorage.setItem('revela_admin_user', JSON.stringify(user));
@@ -227,6 +214,9 @@ export const App = () => {
   const sortedEpisodes = [...episodes].sort((a, b) => a.episode_number - b.episode_number);
 
   const displayEpisode = isTransitioning && nextEpisodeData ? nextEpisodeData : activeEpisodeData;
+  const activeVideoId = selectedCreatorVideo
+    ? `creator:${selectedCreatorVideo.id}`
+    : `episode:${displayEpisode?.id ?? currentEpisode}`;
 
   // Render Administrative Portal if active
   if (showAdminPortal) {
@@ -456,11 +446,9 @@ export const App = () => {
 
         {/* Floating Social Features & Episode Button on Middle Right */}
         <VideoSocialFeatures 
-          key={selectedCreatorVideo ? `creator:${selectedCreatorVideo.id}` : `episode:${displayEpisode?.id ?? currentEpisode}`}
-          videoId={selectedCreatorVideo ? `creator:${selectedCreatorVideo.id}` : `episode:${displayEpisode?.id ?? currentEpisode}`}
+          key={activeVideoId}
+          videoId={activeVideoId}
           onOpenEpisodes={() => setShowEpisodeModal(true)}
-          onOpenComments={() => setShowCommentsModal(true)}
-          onRequireRegistration={handleRequireRegistration}
         />
       </div>
 
@@ -516,42 +504,6 @@ export const App = () => {
           </div>
         )}
       </section>
-
-      {showCommentsModal && (
-        <div
-          className="video-comments-modal-backdrop"
-          onClick={() => setShowCommentsModal(false)}
-        >
-          <section
-            className="video-social-panel video-comments-overlay"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="video-comments-heading"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="video-comments">
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <h3 id="video-comments-heading">Comments</h3>
-                <button
-                  type="button"
-                  onClick={() => setShowCommentsModal(false)}
-                  aria-label="Close comments"
-                  style={{
-                    border: 0,
-                    background: 'transparent',
-                    color: '#fff',
-                    fontSize: '24px',
-                    cursor: 'pointer',
-                  }}
-                >
-                  ×
-                </button>
-              </div>
-              <p className="comments-empty">Comments are not available yet.</p>
-            </div>
-          </section>
-        </div>
-      )}
 
       {/* Episode Selector Modal (Redesigned Grid Layout) */}
       {showEpisodeModal && (
@@ -688,12 +640,6 @@ export const App = () => {
         </div>
       )}
 
-      {/* Registration Modal Gate */}
-      <RegistrationModal
-        isOpen={showRegModal}
-        onClose={() => setShowRegModal(false)}
-        onSuccess={handleRegistrationSuccess}
-      />
     </div>
   );
 };
