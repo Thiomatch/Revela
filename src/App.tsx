@@ -13,6 +13,7 @@ export const App = () => {
   const [episodes, setEpisodes] = useState<any[]>([]);
   const [currentEpisode, setCurrentEpisode] = useState<number>(1);
   const [showEpisodeModal, setShowEpisodeModal] = useState(false);
+  const [showCommentsModal, setShowCommentsModal] = useState(false);
   const [activeTab, setActiveTab] = useState<'synopsis' | 'episodes'>('episodes');
   const [creatorVideos, setCreatorVideos] = useState<AdminVideo[]>([]);
   const [creatorVideosError, setCreatorVideosError] = useState('');
@@ -458,6 +459,7 @@ export const App = () => {
           key={selectedCreatorVideo ? `creator:${selectedCreatorVideo.id}` : `episode:${displayEpisode?.id ?? currentEpisode}`}
           videoId={selectedCreatorVideo ? `creator:${selectedCreatorVideo.id}` : `episode:${displayEpisode?.id ?? currentEpisode}`}
           onOpenEpisodes={() => setShowEpisodeModal(true)}
+          onOpenComments={() => setShowCommentsModal(true)}
           onRequireRegistration={handleRequireRegistration}
         />
       </div>
@@ -514,6 +516,42 @@ export const App = () => {
           </div>
         )}
       </section>
+
+      {showCommentsModal && (
+        <div
+          className="video-comments-modal-backdrop"
+          onClick={() => setShowCommentsModal(false)}
+        >
+          <section
+            className="video-social-panel video-comments-overlay"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="video-comments-heading"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="video-comments">
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <h3 id="video-comments-heading">Comments</h3>
+                <button
+                  type="button"
+                  onClick={() => setShowCommentsModal(false)}
+                  aria-label="Close comments"
+                  style={{
+                    border: 0,
+                    background: 'transparent',
+                    color: '#fff',
+                    fontSize: '24px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+              <p className="comments-empty">Comments are not available yet.</p>
+            </div>
+          </section>
+        </div>
+      )}
 
       {/* Episode Selector Modal (Redesigned Grid Layout) */}
       {showEpisodeModal && (

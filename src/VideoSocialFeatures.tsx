@@ -1,15 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
 import { getVideoLikeCount, incrementVideoLike, subscribeToVideoLikeCount } from './videoLikes';
+import './SocialFeatures.css';
 
 type VideoSocialFeaturesProps = {
   videoId: string;
   onOpenEpisodes: () => void;
+  onOpenComments: () => void;
   onRequireRegistration: () => void;
 };
 
 export default function VideoSocialFeatures({
   videoId,
   onOpenEpisodes,
+  onOpenComments,
   onRequireRegistration: _onRequireRegistration,
 }: VideoSocialFeaturesProps) {
   const [likesCount, setLikesCount] = useState<number>(0);
@@ -17,7 +20,6 @@ export default function VideoSocialFeatures({
   const [likesLoading, setLikesLoading] = useState(true);
   const [likeError, setLikeError] = useState('');
   const [showPlusOne, setShowPlusOne] = useState<boolean>(false);
-  const [commentCount] = useState<number>(84);
   const [shareCount] = useState<number>(42);
   const serverCountRef = useRef(0);
   const pendingLikesRef = useRef(0);
@@ -136,7 +138,10 @@ export default function VideoSocialFeatures({
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         <button
           type="button"
-          onClick={onOpenEpisodes}
+          onClick={(event) => {
+            event.stopPropagation();
+            onOpenEpisodes();
+          }}
           style={{
             width: '44px',
             height: '44px',
@@ -217,7 +222,10 @@ export default function VideoSocialFeatures({
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         <button
           type="button"
-          onClick={onOpenEpisodes}
+          onClick={(event) => {
+            event.stopPropagation();
+            onOpenComments();
+          }}
           style={{
             width: '44px',
             height: '44px',
@@ -237,7 +245,7 @@ export default function VideoSocialFeatures({
           💬
         </button>
         <span style={{ fontSize: '11px', color: '#fff', marginTop: '4px', fontWeight: '600', textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}>
-          {commentCount}
+          Comments
         </span>
       </div>
 
